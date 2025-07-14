@@ -73,11 +73,25 @@
     </div>
   </div>
 <script>
-  // Firebase
-  firebase.initializeApp({ apiKey:'YOUR_API_KEY', authDomain:'YOUR_AUTH_DOMAIN', databaseURL:'YOUR_DATABASE_URL', projectId:'YOUR_PROJECT_ID', appId:'YOUR_APP_ID' });
-  const auth=firebase.auth(), db=firebase.database();
-  let user, mode=2, code, players=[], turn=0, boardSize=5, lines=new Set(), scores={};
-  // Auth
+  const firebaseConfig = {
+    apiKey: "AIzaSyCKfr-jvUKonc2TcEDcejk562kOm8LTAa0",
+    authDomain: "dot-and-box-online.firebaseapp.com",
+    projectId: "dot-and-box-online",
+    storageBucket: "dot-and-box-online.appspot.com", // ঠিক করা
+    messagingSenderId: "334340725862",
+    appId: "1:334340725862:web:356b78d59e76ff6f5861a7"
+  };
+
+  // Init Firebase
+  firebase.initializeApp(firebaseConfig);
+
+  // Then declare auth and db
+  const auth = firebase.auth();
+  const db = firebase.database();
+
+  // Declare game variables
+  let user, mode = 2, code, players = [], turn = 0, boardSize = 5, lines = new Set(), scores = {};
+
   auth.onAuthStateChanged(async u=>{
     if(u){ user=u;document.getElementById('auth-screen').classList.add('hidden');document.getElementById('app').classList.remove('hidden');
       document.getElementById('username').textContent=u.displayName;
