@@ -107,7 +107,7 @@
         document.getElementById('username').textContent = u.displayName;
         const ref = db.ref('users/' + u.uid);
         const snap = await ref.get();
-        let r = snap.child('rating').exists() ? snap.child('rating').val() : 1000;
+        let r = snap.child('rating').exists() ? snap.child('rating').val() : 50;
         await ref.update({ rating: r, displayName: u.displayName });
         document.getElementById('rating').textContent = 'Rating: ' + r;
         loadLeader(); show('home');
