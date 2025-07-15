@@ -1,263 +1,773 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dot and Box Online</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dot and Box Online Multiplayer with Bot</title>
+
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"></script>
+  
+  <!-- Firebase JS SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
   <style>
-    body { font-family: Arial, sans-serif; background: #121212; color: #fff; margin: 0; display: flex; flex-direction: column; min-height: 100vh; }
-    .hidden { display: none!important; }
-    #game-board { display: grid; gap: 5px; margin: 20px auto; }
-    .dot { width: 12px; height: 12px; background: #fff; border-radius: 50%; }
-    .line { background: #444; cursor: pointer; transition: background 0.2s; }
-    .line.horizontal { height: 6px; width: 60px; }
-    .line.vertical { height: 60px; width: 6px; }
-    .box { width: 60px; height: 60px; background: #2a2a2a; display: flex; align-items: center; justify-content: center; font-size: 1.2em; font-weight: bold; }
-    .avatar { width: 24px; height: 24px; border-radius: 50%; display: inline-block; margin-right: 8px; vertical-align: middle; }
-    @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.4); } }
-    .turn-pulse { animation: pulse 1s infinite; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #121212;
+      color: #fff;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    #auth-screen, #app {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    #auth-screen {
+      background: #1f1f1f;
+    }
+    button {
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button:focus {
+      outline: none;
+    }
+
+    /* Board styles */
+    #game-board {
+      margin: 20px auto;
+      display: grid;
+      gap: 5px;
+      user-select: none;
+    }
+    .dot {
+      width: 12px;
+      height: 12px;
+      background-color: #fff;
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    .line {
+      background-color: #444;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    .line.horizontal {
+      height: 6px;
+      width: 60px;
+    }
+    .line.vertical {
+      height: 60px;
+      width: 6px;
+    }
+    .line.active {
+      cursor: default;
+    }
+    .box {
+      width: 60px;
+      height: 60px;
+      background-color: #2a2a2a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.3em;
+      color: #fff;
+      user-select: none;
+    }
+    /* Player colors */
+    .player-1 { background-color: #4a90e2; }
+    .player-2 { background-color: #e94e77; }
+    .player-3 { background-color: #f5a623; }
+    .player-4 { background-color: #7ed321; }
+
+    /* Turn indicator */
+    #player-list {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 12px;
+    }
+    .player-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: bold;
+      font-size: 1.1em;
+      color: #ddd;
+      user-select: none;
+    }
+    .player-circle {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background-color: gray;
+      transition: all 0.3s ease;
+      box-shadow: 0 0 6px transparent;
+    }
+    .player-turn {
+      transform: scale(1.3);
+      box-shadow: 0 0 10px 3px currentColor;
+      color: inherit;
+    }
+
+    /* Status bar */
+    #status {
+      margin-top: 10px;
+      font-weight: bold;
+      font-size: 1.2em;
+      text-align: center;
+      min-height: 26px;
+    }
+
+    /* Modal */
+    #modal {
+      position: fixed;
+      inset: 0;
+      background-color: rgba(0,0,0,0.85);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    #modal.active {
+      display: flex;
+    }
+    #modal-content {
+      background: #222;
+      padding: 20px 30px;
+      border-radius: 8px;
+      text-align: center;
+      width: 320px;
+      max-width: 90vw;
+      color: #fff;
+    }
+    #modal-content p {
+      margin-bottom: 20px;
+      font-size: 1.2em;
+    }
+    #modal-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+    }
+    #modal-buttons button {
+      flex: 1;
+      padding: 10px;
+      font-weight: bold;
+      border-radius: 6px;
+      border: none;
+      font-size: 1em;
+    }
+    #btn-continue-bot {
+      background-color: #4a90e2;
+      color: white;
+    }
+    #btn-continue-bot:hover {
+      background-color: #357ABD;
+    }
+    #btn-cancel {
+      background-color: #e94e77;
+      color: white;
+    }
+    #btn-cancel:hover {
+      background-color: #b23050;
+    }
+
+    /* Bottom Nav */
+    #bottom-nav {
+      background: #222;
+      padding: 10px 0;
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      border-top: 1px solid #444;
+    }
+    #bottom-nav button {
+      background: #333;
+      border-radius: 6px;
+      color: #ccc;
+      padding: 8px 16px;
+      font-weight: 600;
+    }
+    #bottom-nav button.active,
+    #bottom-nav button:hover {
+      background: #4a90e2;
+      color: white;
+    }
+
+    /* Leaderboard */
+    #leaderboard {
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 15px;
+    }
+    #leaderboard div {
+      background: #2a2a2a;
+      margin-bottom: 8px;
+      padding: 10px 12px;
+      border-radius: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
+    }
+
+    /* Scrollbar for leaderboard */
+    #leaderboard::-webkit-scrollbar {
+      width: 6px;
+    }
+    #leaderboard::-webkit-scrollbar-thumb {
+      background-color: #555;
+      border-radius: 3px;
+    }
+
   </style>
 </head>
 <body>
-  <div id="auth-screen" class="flex-grow flex items-center justify-center flex-col">
-    <h1 class="text-4xl mb-4">Dot & Box Online</h1>
-    <button onclick="signIn()" class="bg-blue-500 px-6 py-3 rounded">Sign in with Google</button>
-  </div>  <div id="app" class="hidden flex-grow flex flex-col">
-    <div class="p-4 flex justify-between items-center bg-gray-800">
-      <div id="user-info">
-        <span id="username" class="font-semibold"></span>
-        <span id="rating" class="text-gray-400 ml-2"></span>
-      </div>
-      <div class="space-x-2">
-        <button onclick="selectMode(2)" id="btn2" class="bg-green-500 px-3 py-1 rounded">2 Players</button>
-        <button onclick="selectMode(4)" id="btn4" class="bg-purple-500 px-3 py-1 rounded">4 Players</button>
-      </div>
-      <div id="match-link" class="text-sm text-blue-400"></div>
-    </div><div id="screens" class="flex-grow p-4 overflow-auto">
-  <div id="screen-home" class="space-y-4">
-    <button onclick="startMatch()" class="w-full bg-green-600 px-4 py-2 rounded">Play Online</button>
-    <div id="modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center hidden">
-      <div class="bg-gray-700 p-6 rounded text-center space-y-4">
-        <p id="modal-text">Waiting for players...</p>
-        <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-white mx-auto"></div>
-        <button onclick="continueWithBot()" class="bg-blue-500 px-4 py-2 rounded">Continue with Bot</button>
+
+  <div id="auth-screen">
+    <h1 class="text-4xl mb-6">Dot & Box Online</h1>
+    <button id="btn-signin" class="bg-blue-600 px-6 py-3 rounded hover:bg-blue-700">Sign in with Google</button>
+  </div>
+
+  <div id="app" class="hidden flex flex-col items-center flex-grow" style="padding:20px;">
+
+    <div class="flex gap-4 mb-3">
+      <button id="btn-mode-2" class="px-4 py-2 rounded bg-green-600 hover:bg-green-700 font-semibold ring-2 ring-transparent">2 Players</button>
+      <button id="btn-mode-4" class="px-4 py-2 rounded bg-purple-600 hover:bg-purple-700 font-semibold ring-2 ring-transparent">4 Players</button>
+      <button id="btn-continue-bot" class="px-4 py-2 rounded bg-blue-500 hover:bg-blue-600 font-semibold">Continue with Bot</button>
+      <button id="btn-signout" class="ml-auto px-4 py-2 rounded bg-red-600 hover:bg-red-700 font-semibold">Sign Out</button>
+    </div>
+
+    <div id="match-info" class="mb-2 text-sm text-blue-400 select-text"></div>
+
+    <div id="player-list" aria-live="polite"></div>
+
+    <div id="status"></div>
+
+    <div id="game-board"></div>
+
+    <div id="winner-message" class="mt-4 text-green-400 font-bold text-xl"></div>
+
+    <button id="btn-restart" class="mt-6 px-6 py-3 rounded bg-gray-700 hover:bg-gray-800 font-semibold hidden">Restart Game</button>
+
+    <div id="leaderboard-container" class="mt-8 w-full max-w-md">
+      <h2 class="text-2xl mb-3 font-semibold text-center">Leaderboard</h2>
+      <div id="leaderboard"></div>
+    </div>
+
+  </div>
+
+  <div id="modal">
+    <div id="modal-content">
+      <p>Do you want to <strong>Continue with Bot</strong> if opponents don't join?</p>
+      <div id="modal-buttons">
+        <button id="modal-btn-continue" aria-label="Continue with Bot">Continue with Bot</button>
+        <button id="modal-btn-cancel" aria-label="Cancel">Cancel</button>
       </div>
     </div>
   </div>
 
-  <div id="screen-game" class="hidden">
-    <div id="player-list" class="flex justify-center space-x-8 mb-4"></div>
-    <div id="status" class="text-xl font-bold mb-2 text-center"></div>
-    <div id="game-board"></div>
-  </div>
+<script>
+  // Your Firebase config here:
+  const firebaseConfig = {
+    apiKey: "AIzaSyCKfr-jvUKonc2TcEDcejk562kOm8LTAa0",
+    authDomain: "dot-and-box-online.firebaseapp.com",
+    databaseURL: "https://dot-and-box-online-default-rtdb.firebaseio.com/",
+    projectId: "dot-and-box-online",
+    storageBucket: "dot-and-box-online.appspot.com",
+    messagingSenderId: "334340725862",
+    appId: "1:334340725862:web:356b78d59e76ff6f5861a7"
+  };
 
-  <div id="screen-leaderboard" class="hidden">
-    <h2 class="text-2xl mb-4">Leaderboard</h2>
-    <div id="leaderboard" class="space-y-2 overflow-auto max-h-96"></div>
-  </div>
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.database();
 
-  <div id="screen-settings" class="hidden">
-    <h2 class="text-2xl mb-4">Settings</h2>
-    <button onclick="signOut()" class="bg-red-500 px-4 py-2 rounded">Sign Out</button>
-  </div>
-</div>
+  // Game settings
+  const boardSize = 8; // 8x8 boxes
+  const maxPlayersOptions = [2,4];
+  let currentMode = 2;
+  let currentUser = null;
 
-<div class="bg-gray-800 flex justify-around p-2">
-  <button onclick="show('home')">🏠 Home</button>
-  <button onclick="show('leaderboard')">⭐ Leaderboard</button>
-  <button onclick="show('settings')">⚙️ Settings</button>
-</div>
+  // Game state variables
+  let code = null;
+  let players = [];
+  let currentTurn = 0; // index in players[]
+  let lines = new Set();
+  let scores = {};
+  let isGameActive = false;
+  let isBotMode = false;
 
-  </div>  <script>
-    const firebaseConfig = { apiKey: "AIzaSyCKfr-jvUKonc2TcEDcejk562kOm8LTAa0", authDomain: "dot-and-box-online.firebaseapp.com", projectId: "dot-and-box-online", storageBucket: "dot-and-box-online.appspot.com", messagingSenderId: "334340725862", appId: "1:334340725862:web:356b78d59e76ff6f5861a7" };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.database();
-    let user, mode = 2, code, players = [], turn = 0, boardSize = 5;
-    let lines = new Set(), scores = {};
+  // Cached DOM
+  const authScreen = document.getElementById('auth-screen');
+  const app = document.getElementById('app');
+  const btnSignIn = document.getElementById('btn-signin');
+  const btnSignOut = document.getElementById('btn-signout');
+  const btnMode2 = document.getElementById('btn-mode-2');
+  const btnMode4 = document.getElementById('btn-mode-4');
+  const btnContinueBot = document.getElementById('btn-continue-bot');
+  const matchInfo = document.getElementById('match-info');
+  const playerListDiv = document.getElementById('player-list');
+  const statusDiv = document.getElementById('status');
+  const gameBoard = document.getElementById('game-board');
+  const winnerMessage = document.getElementById('winner-message');
+  const btnRestart = document.getElementById('btn-restart');
+  const modal = document.getElementById('modal');
+  const modalBtnContinue = document.getElementById('modal-btn-continue');
+  const modalBtnCancel = document.getElementById('modal-btn-cancel');
 
-    auth.onAuthStateChanged(async u => {
-      if (u) {
-        user = u;
-        document.getElementById('auth-screen').classList.add('hidden');
-        document.getElementById('app').classList.remove('hidden');
-        document.getElementById('username').textContent = u.displayName;
-        const ref = db.ref('users/' + u.uid);
-        const snap = await ref.get();
-        let r = snap.child('rating').exists() ? snap.child('rating').val() : 50;
-        await ref.update({ rating: r, displayName: u.displayName });
-        document.getElementById('rating').textContent = 'Rating: ' + r;
-        loadLeader(); show('home');
+  // Utility function to generate random 8-digit room code
+  function generateCode() {
+    return (Math.floor(1e7 + Math.random() * 9e7)).toString();
+  }
+
+  // Animate turn indicator on player circles
+  function renderPlayerList() {
+    playerListDiv.innerHTML = '';
+    const colors = ['#4a90e2', '#e94e77', '#f5a623', '#7ed321'];
+    players.forEach((uid, i) => {
+      const isCurrent = i === currentTurn;
+      const div = document.createElement('div');
+      div.className = 'player-item';
+      div.style.color = colors[i];
+      div.textContent = uid === currentUser.uid ? 'You' : 'Player ' + (i + 1);
+
+      const circle = document.createElement('span');
+      circle.className = 'player-circle';
+      circle.style.backgroundColor = colors[i];
+      if (isCurrent) circle.classList.add('player-turn');
+      div.prepend(circle);
+
+      playerListDiv.appendChild(div);
+    });
+  }
+
+  // Show status text with player color
+  function updateStatus() {
+    if (!isGameActive) {
+      statusDiv.textContent = '';
+      return;
+    }
+    const colors = ['Blue', 'Red', 'Yellow', 'Green'];
+    statusDiv.textContent = `Player ${currentTurn+1}'s turn (${colors[currentTurn]})`;
+    statusDiv.style.color = ['#4a90e2','#e94e77','#f5a623','#7ed321'][currentTurn];
+  }
+
+  // Create board DOM
+  function createBoard() {
+    gameBoard.innerHTML = '';
+    const size = boardSize * 2 - 1;
+    gameBoard.style.gridTemplateColumns = Array(size).fill('auto').join(' ');
+
+    for (let r=0; r<size; r++) {
+      for (let c=0; c<size; c++) {
+        if (r % 2 === 0 && c % 2 === 0) {
+          const dot = document.createElement('div');
+          dot.className = 'dot';
+          gameBoard.appendChild(dot);
+        } else if (r % 2 === 0 || c % 2 === 0) {
+          const line = document.createElement('div');
+          line.className = 'line ' + (r % 2 === 0 ? 'horizontal' : 'vertical');
+          line.dataset.r = r;
+          line.dataset.c = c;
+          line.onclick = () => selectLine(r, c);
+          gameBoard.appendChild(line);
+        } else {
+          const box = document.createElement('div');
+          box.className = 'box';
+          box.dataset.r = r;
+          box.dataset.c = c;
+          gameBoard.appendChild(box);
+        }
+      }
+    }
+  }
+
+  // Reset & start new game locally
+  function startLocalGame() {
+    scores = {};
+    players.forEach(p => scores[p] = 0);
+    lines.clear();
+    currentTurn = 0;
+    isGameActive = true;
+    createBoard();
+    renderPlayerList();
+    updateStatus();
+    winnerMessage.textContent = '';
+    btnRestart.classList.remove('hidden');
+  }
+
+  // Firebase helper: get slot players by code
+  async function getSlotPlayers(code) {
+    const snap = await db.ref('slots/' + code).get();
+    const val = snap.val() || {};
+    return ['p1','p2','p3','p4'].filter(k=>val[k]).map(k=>val[k]);
+  }
+
+  // Firebase helper: update user rating
+  async function updateUserRating(uid, change) {
+    const ref = db.ref('users/' + uid);
+    const snap = await ref.get();
+    let rating = snap.child('rating').exists() ? snap.child('rating').val() : 1000;
+    rating += change;
+    await ref.update({ rating });
+    if (uid === currentUser.uid) {
+      document.getElementById('rating-display').textContent = 'Rating: ' + rating;
+    }
+  }
+
+  // Matchmaking logic for online game
+  async function startMatch() {
+    if (!currentUser) return alert('Please sign in first');
+    code = generateCode();
+    history.replaceState(null, '', '?match=' + code);
+    matchInfo.textContent = 'Code: ' + code;
+    modal.classList.add('active');
+    // create slot or join existing
+    const slot = db.ref('slots/' + code);
+
+    const snap = await slot.get();
+    const val = snap.val() || {};
+
+    // Join players in slot
+    if (!val.p1) {
+      await slot.update({ p1: currentUser.uid });
+      players = [currentUser.uid];
+      if (currentMode === 1) startLocalGame();
+      else waitForPlayers(slot);
+    } else if (!val.p2 && currentMode >= 2) {
+      await slot.update({ p2: currentUser.uid });
+      players = [val.p1, currentUser.uid];
+      if (currentMode === 2) startOnlineGame();
+      else waitForPlayers(slot);
+    } else if (currentMode === 4) {
+      if (!val.p3) {
+        await slot.update({ p3: currentUser.uid });
+        players = [val.p1, val.p2, currentUser.uid];
+        waitForPlayers(slot);
+      } else if (!val.p4) {
+        await slot.update({ p4: currentUser.uid });
+        players = [val.p1, val.p2, val.p3, currentUser.uid];
+        startOnlineGame();
+      } else {
+        alert('Match is full');
+        return;
+      }
+    } else {
+      alert('Match is full or invalid');
+      return;
+    }
+  }
+
+  // Wait for other players in online matchmaking slot
+  function waitForPlayers(slot) {
+    slot.on('value', snap => {
+      const val = snap.val() || {};
+      players = ['p1','p2','p3','p4'].filter(k=>val[k]).map(k=>val[k]);
+      renderPlayerList();
+      if ((currentMode === 2 && players.length === 2) || (currentMode === 4 && players.length === 4)) {
+        slot.off();
+        modal.classList.remove('active');
+        startOnlineGame();
       }
     });
+  }
 
-    function signIn() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
-    function signOut() { auth.signOut(); location.reload(); }
+  // Start online game: setup state and board, listen for moves
+  async function startOnlineGame() {
+  isGameActive = true;
+  isBotMode = false;
+  lines.clear();
+  currentTurn = 0;
+  scores = {};
+  players.forEach(p => scores[p] = 0);
+  createBoard();
+  renderPlayerList();
+  updateStatus();
+  winnerMessage.textContent = '';
+  btnRestart.classList.remove('hidden');
+  matchInfo.textContent = `Match Code: ${code} | Players: ${players.length}`;
 
-    function selectMode(m) {
-      mode = m;
-      ['btn2','btn4'].forEach(id => document.getElementById(id).classList.remove('ring','ring-white'));
-      document.getElementById(m===2?'btn2':'btn4').classList.add('ring','ring-white');
+  // Listen for moves update
+  const movesRef = db.ref(`matches/${code}/moves`);
+  movesRef.off();
+  movesRef.on('value', snap => {
+    const val = snap.val() || {};
+    lines = new Set(Object.keys(val));
+    updateBoardFromMoves();
+  });
+
+  // Listen for game state updates: current turn, scores, winner
+  const stateRef = db.ref(`matches/${code}/state`);
+  stateRef.off();
+  stateRef.on('value', snap => {
+    const state = snap.val();
+    if (!state) return;
+    currentTurn = state.currentTurn;
+    scores = state.scores || scores;
+    renderPlayerList();
+    updateStatus();
+
+    if (state.winner !== null && state.winner !== undefined) {
+      isGameActive = false;
+      winnerMessage.textContent = state.winner === 'draw' ? "It's a Draw!" : `Player ${state.winner + 1} Wins!`;
+      btnRestart.classList.remove('hidden');
     }
+  });
+}
 
-    function show(screen) {
-      ['home','game','leaderboard','settings'].forEach(s => document.getElementById('screen-'+s).classList.add('hidden'));
-      document.getElementById('screen-'+screen).classList.remove('hidden');
+// Update board UI from current moves set
+function updateBoardFromMoves() {
+  document.querySelectorAll('.line').forEach(line => {
+    const r = line.dataset.r;
+    const c = line.dataset.c;
+    const key = `${r}_${c}`;
+    if (lines.has(key)) {
+      line.classList.add('active');
+      line.style.backgroundColor = getPlayerColor(currentTurn);
+      line.style.cursor = 'default';
+      line.onclick = null;
+    } else {
+      line.classList.remove('active');
+      line.style.backgroundColor = '#444';
+      line.style.cursor = 'pointer';
+      line.onclick = () => selectLine(parseInt(r), parseInt(c));
     }
+  });
+  updateBoxesColors();
+}
 
-    async function loadLeader() {
-      const snap = await db.ref('users').orderByChild('rating').limitToLast(20).get();
-      const list = [];
-      snap.forEach(c => list.push({ n: c.val().displayName, r: c.val().rating }));
-      list.sort((a,b) => b.r - a.r);
-      const ctn = document.getElementById('leaderboard'); ctn.innerHTML = '';
-      list.forEach((u,i) => {
-        const bg = i<3 ? ['bg-yellow-500','bg-gray-300 text-black','bg-yellow-700'][i] : 'bg-gray-700';
-        const div = document.createElement('div');
-        div.className = `flex justify-between p-2 rounded ${bg}`;
-        div.innerHTML = `<span>#${i+1}</span><span>${u.n}</span><span>${u.r}</span>`;
-        ctn.appendChild(div);
-      });
+// Get color string for a player index
+function getPlayerColor(playerIndex) {
+  const colors = ['#4a90e2', '#e94e77', '#f5a623', '#7ed321'];
+  return colors[playerIndex] || '#888';
+}
+
+// Select a line (user action)
+async function selectLine(r, c) {
+  if (!isGameActive) return;
+  if (players[currentTurn] !== currentUser.uid) {
+    alert("It's not your turn");
+    return;
+  }
+  const key = `${r}_${c}`;
+  if (lines.has(key)) return; // Already taken
+
+  // Update Firebase moves
+  const movesRef = db.ref(`matches/${code}/moves`);
+  await movesRef.update({ [key]: currentTurn });
+
+  // Check if box completed and update scores + turn
+  await updateGameStateAfterMove(r, c, currentTurn);
+}
+
+// Check if any boxes completed and update game state accordingly
+async function updateGameStateAfterMove(r, c, playerIndex) {
+  // Add line locally
+  lines.add(`${r}_${c}`);
+
+  // Determine boxes that could be completed by this line
+  let completedBoxes = [];
+  const size = boardSize * 2 - 1;
+
+  // Helper: check if box at boxR, boxC is completed
+  function isBoxCompleted(boxR, boxC) {
+    if (boxR <= 0 || boxR >= size || boxC <= 0 || boxC >= size) return false;
+    if (boxR % 2 === 0 || boxC % 2 === 0) return false; // must be box cell (odd,odd)
+    const top = `${boxR - 1}_${boxC}`;
+    const bottom = `${boxR + 1}_${boxC}`;
+    const left = `${boxR}_${boxC - 1}`;
+    const right = `${boxR}_${boxC + 1}`;
+    return lines.has(top) && lines.has(bottom) && lines.has(left) && lines.has(right);
+  }
+
+  // Check the boxes adjacent to the placed line
+  if (r % 2 === 0) { // horizontal line, affects boxes above and below
+    if (isBoxCompleted(r + 1, c)) completedBoxes.push([r + 1, c]);
+    if (isBoxCompleted(r - 1, c)) completedBoxes.push([r - 1, c]);
+  } else { // vertical line, affects boxes left and right
+    if (isBoxCompleted(r, c + 1)) completedBoxes.push([r, c + 1]);
+    if (isBoxCompleted(r, c - 1)) completedBoxes.push([r, c - 1]);
+  }
+
+  // Update scores and mark boxes
+  completedBoxes.forEach(([boxR, boxC]) => {
+    const boxKey = `${boxR}_${boxC}`;
+    if (!scores[playerIndex]) scores[playerIndex] = 0;
+    scores[playerIndex]++;
+    // Mark box owner on board
+    const box = document.querySelector(`.box[data-r="${boxR}"][data-c="${boxC}"]`);
+    if (box) {
+      box.style.backgroundColor = getPlayerColor(playerIndex);
+      box.textContent = playerIndex + 1;
     }
+  });
 
-    async function startMatch() {
-      if (code) await db.ref('slots/'+code).remove();
-      code = new URLSearchParams(location.search).get('match') || Math.floor(1e7+Math.random()*9e7).toString();
-      history.replaceState(null,'','?match='+code);
-      document.getElementById('match-link').textContent = 'Code: '+code;
-      document.getElementById('modal').classList.remove('hidden');
-      const slot = db.ref('slots/'+code);
-      const snap = await slot.get(); const d = snap.val()||{};
-      if (!d.p1) await slot.update({ p1: user.uid }), waitForPlayers(slot);
-      else if (!d.p2 && mode===2) await slot.update({ p2: user.uid }), beginGame(d);
-      else if (!d.p2 && mode>2) await slot.update({ p2: user.uid }), waitForPlayers(slot);
-      else if (!d.p3 && mode===4) await slot.update({ p3: user.uid }), waitForPlayers(slot);
-      else if (!d.p4 && mode===4) await slot.update({ p4: user.uid }), beginGame(d);
-      else alert('Match unavailable.'), document.getElementById('modal').classList.add('hidden');
+  // Determine next turn: if player completed box(es), he plays again, else next player
+  let nextTurn = currentTurn;
+  if (completedBoxes.length === 0) {
+    nextTurn = (currentTurn + 1) % players.length;
+  }
+
+  // Check for game over: all boxes claimed
+  const totalBoxes = boardSize * boardSize;
+  const totalClaimed = Object.values(scores).reduce((a,b) => a+b,0);
+  let winner = null;
+  if (totalClaimed >= totalBoxes) {
+    isGameActive = false;
+    // Determine highest score
+    const maxScore = Math.max(...Object.values(scores));
+    const winners = Object.entries(scores).filter(([p,s]) => s === maxScore).map(([p]) => parseInt(p));
+    if (winners.length === 1) {
+      winner = winners[0];
+    } else {
+      winner = 'draw';
     }
+  }
 
-    function continueWithBot() {
-      document.getElementById('modal-text').textContent = 'Starting with Bot...';
-      document.getElementById('modal').classList.add('hidden');
-      players = [user.uid];
-      for (let i = 1; i < mode; i++) players.push('bot'+i);
-      beginGame();
+  // Update Firebase game state
+  const stateRef = db.ref(`matches/${code}/state`);
+  await stateRef.set({
+    currentTurn: nextTurn,
+    scores,
+    winner
+  });
+}
+
+// Update boxes colors on board from scores (when loading)
+function updateBoxesColors() {
+  const boxes = document.querySelectorAll('.box');
+  boxes.forEach(box => {
+    const r = parseInt(box.dataset.r);
+    const c = parseInt(box.dataset.c);
+    const top = `${r - 1}_${c}`;
+    const bottom = `${r + 1}_${c}`;
+    const left = `${r}_${c - 1}`;
+    const right = `${r}_${c + 1}`;
+    if (lines.has(top) && lines.has(bottom) && lines.has(left) && lines.has(right)) {
+      // Find who owns this box by checking which player's color is assigned (if saved)
+      // Since owner is saved only visually, we'll assign neutral color here
+      // Could improve by storing box ownership in DB if needed
+      // For now, do nothing here to not override colors
+    } else {
+      box.style.backgroundColor = '#2a2a2a';
+      box.textContent = '';
     }
+  });
+}
 
-    function waitForPlayers(slot) {
-      slot.on('value', snap => {
-        const v = snap.val()||{};
-        const arr = ['p1','p2','p3','p4'].filter(k=>v[k]).map(k=>v[k]);
-        if ((mode===2&&arr.length===2)||(mode===4&&arr.length===4)) {
-          players = arr;
-          slot.off(); slot.remove(); beginGame();
-        }
-      });
-    }
+// Handle restart button (resets match data)
+btnRestart.onclick = async () => {
+  if (!code) return;
+  if (!confirm('Restart the game? This will reset all moves.')) return;
 
-    function beginGame(pre) {
-      document.getElementById('modal').classList.add('hidden');
-      if (pre) players = ['p1','p2','p3','p4'].filter(k=>pre[k]).map(k=>pre[k]);
-      turn = 0; lines.clear(); scores = {};
-      players.forEach(p=>scores[p]=0);
-      renderPlayerList(); show('game'); renderBoard(); updateStatus();
-    }
+  const movesRef = db.ref(`matches/${code}/moves`);
+  const stateRef = db.ref(`matches/${code}/state`);
 
-    function renderPlayerList() {
-      const container = document.getElementById('player-list'); container.innerHTML = '';
-      players.forEach((uid, i) => {
-        const div = document.createElement('div');
-        const color = ['#4a90e2','#e94e77','#f5a623','#7ed321'][i];
-        const label = uid===user.uid ? 'You' : uid.startsWith('bot') ? 'Bot '+i : 'Player '+(i+1);
-        div.innerHTML = `<span id="avatar-${i}" class="avatar" style="background:${color};"></span>${label}`;
-        container.appendChild(div);
-      });
-    }
+  await movesRef.remove();
+  await stateRef.remove();
 
-    function renderBoard() {
-      const gb = document.getElementById('game-board'); gb.innerHTML = '';
-      const size = boardSize*2 -1; gb.style.gridTemplateColumns = Array(size).fill('auto').join(' ');
-      for(let r=0;r<size;r++) for(let c=0;c<size;c++) {
-        if(r%2===0 && c%2===0) gb.appendChild(Object.assign(document.createElement('div'),{className:'dot'}));
-        else if(r%2===0||c%2===0) {
-          const d = document.createElement('div'); d.className='line '+(r%2===0?'horizontal':'vertical');
-          d.dataset.key=`${r}-${c}`; d.onclick=()=>selectLine(r,c); gb.appendChild(d);
-        } else gb.appendChild(Object.assign(document.createElement('div'),{className:'box',dataset:{key:`${r}-${c}`}}));
-      }
-    }
+  startOnlineGame();
+};
 
-    function selectLine(r,c) {
-      const key = `${r}-${c}`; if(lines.has(key)) return; lines.add(key);
-      const el = document.querySelector(`.line[data-key="${key}"]`);
-      el.classList.add('active'); el.style.backgroundColor = ['#4a90e2','#e94e77','#f5a623','#7ed321'][turn];
-      if(!checkBoxes(r,c)) turn=(turn+1)%players.length;
-      updateStatus();
-    }
+// Auth related
 
-    function checkBoxes(r,c) {
-      let claimed = false;
-      [[0,1],[0,-1],[1,0],[-1,0]].forEach(([dr,dc]) => {
-        const rr=r+dr, cc=c+dc;
-        const corners=[[rr-1,cc-1],[rr-1,cc+1],[rr+1,cc-1],[rr+1,cc+1]];
-        if(rr%2&&cc%2&&corners.every(([ar,ac])=>lines.has(`${ar}-${cc}`)&&lines.has(`${rr}-${ac}`))) {
-          const box=document.querySelector(`.box[data-key="${rr}-${cc}"]`);
-          if(!box.classList.length) { box.classList.add(`player-${turn+1}`); box.textContent=turn+1;
-            scores[players[turn]]++; claimed=true;
-          }
-        }
-      });
-      return claimed;
-    }
+btnSignIn.onclick = () => {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider).catch(alert);
+};
 
-    function updateStatus() {
-      const st=document.getElementById('status');
-      const label = players[turn]===user.uid ? "Your" : players[turn].startsWith('bot') ? "Bot" : "Player "+(turn+1);
-      st.textContent = `${label} Turn`;
-      players.forEach((uid,i) => document.getElementById(`avatar-${i}`).classList.remove('turn-pulse'));
-      document.getElementById(`avatar-${turn}`).classList.add('turn-pulse');
-      if(players[turn].startsWith('bot')) setTimeout(botMove,800);
-    }
+btnSignOut.onclick = () => {
+  auth.signOut();
+};
 
-    function botMove() {
-      // Prefer moves that complete a box
-      const moves = [...document.querySelectorAll('.line')].filter(d=>!lines.has(d.dataset.key));
-      const winMoves = moves.filter(d=>{
-        const [r,c] = d.dataset.key.split('-').map(Number);
-        // simulate
-        const temp = new Set([...lines, d.dataset.key]);
-        return [[0,1],[0,-1],[1,0],[-1,0]].some(([dr,dc])=>{
-          const rr=r+dr, cc=c+dc;
-          if(rr%2&&cc%2) {
-            const corners=[[rr-1,cc-1],[rr-1,cc+1],[rr+1,cc-1],[rr+1,cc+1]];
-            return corners.every(([ar,ac])=>temp.has(`${ar}-${cc}`)&&temp.has(`${rr}-${ac}`));
-          }
-          return false;
-        });
-      });
-      const pick = winMoves.length? winMoves[Math.floor(Math.random()*winMoves.length)] : moves[Math.floor(Math.random()*moves.length)];
-      const [r,c] = pick.dataset.key.split('-').map(Number);
-      selectLine(r,c);
-    }
+auth.onAuthStateChanged(user => {
+  currentUser = user;
+  if (user) {
+    authScreen.classList.add('hidden');
+    app.classList.remove('hidden');
+    loadLeaderboard();
+  } else {
+    authScreen.classList.remove('hidden');
+    app.classList.add('hidden');
+  }
+});
 
-    function isOver() { return Object.values(scores).reduce((a,b)=>a+b,0) === (boardSize-1)**2; }
+// Mode selection
 
-    async function endGame() {
-      document.getElementById('status').textContent = 'Game Over';
-      const sorted = Object.entries(scores).sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
-      for(let i=0;i<sorted.length;i++) {
-        const uid=sorted[i]; if(uid.startsWith('bot')) continue;
-        const ref=db.ref('users/'+uid); const snap=await ref.get();
-        let r=snap.child('rating').val()||50; const change = mode===2 ? (i===0?12:-4) : [12,8,-4,-8][i];
-        await ref.update({ rating: r+change });
-        if(uid===user.uid) document.getElementById('rating').textContent = 'Rating: '+(r+change);
-      }
-      const winner = sorted[0];
-      document.getElementById('status').textContent = `🏆 Winner: ${winner===user.uid?'You':winner.startsWith('bot')?'Bot':'Player '+(sorted.indexOf(winner)+1)}`;
-      loadLeader();
-    }
-  </script></body>
-      </html>
+btnMode2.onclick = () => {
+  currentMode = 2;
+  btnMode2.classList.add('ring-blue-400');
+  btnMode4.classList.remove('ring-blue-400');
+  startMatch();
+};
+
+btnMode4.onclick = () => {
+  currentMode = 4;
+  btnMode4.classList.add('ring-blue-400');
+  btnMode2.classList.remove('ring-blue-400');
+  startMatch();
+};
+
+// Continue with Bot modal
+
+btnContinueBot.onclick = () => {
+  modal.classList.add('active');
+};
+
+modalBtnContinue.onclick = () => {
+  modal.classList.remove('active');
+  isBotMode = true;
+  startLocalGame();
+};
+
+modalBtnCancel.onclick = () => {
+  modal.classList.remove('active');
+};
+
+// Leaderboard load
+
+async function loadLeaderboard() {
+  const usersSnap = await db.ref('users').orderByChild('rating').limitToLast(20).get();
+  const users = [];
+  usersSnap.forEach(child => {
+    users.push({ uid: child.key, rating: child.val().rating || 1000 });
+  });
+  users.sort((a,b) => b.rating - a.rating);
+  const leaderboardDiv = document.getElementById('leaderboard');
+  leaderboardDiv.innerHTML = '';
+  users.forEach(user => {
+    const div = document.createElement('div');
+    div.textContent = `${user.uid}: ${user.rating}`;
+    leaderboardDiv.appendChild(div);
+  });
+}
+
+// Auto start on page load URL ?match=code
+window.addEventListener('load', async () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlCode = urlParams.get('match');
+  if (urlCode) {
+    code = urlCode;
+    matchInfo.textContent = `Code: ${code}`;
+    await startMatch();
+  }
+});
+
+// TODO: Implement Bot logic (if isBotMode is true)
+
+</script>
+
+</body>
+</html>
