@@ -1,366 +1,186 @@
 <!DOCTYPE html>
 <html lang="en" class="bg-gray-900 text-white">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Dot and Box Online Multiplayer with Friends</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dot and Box Online Multiplayer</title>
 
-  <!-- Tailwind CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
+<!-- Tailwind CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
 
-  <style>
-    body {
-      font-family: 'Inter', sans-serif;
-    }
+<style>
+  body {
+    font-family: 'Inter', sans-serif;
+  }
+  .dot {
+    width: 14px;
+    height: 14px;
+    background-color: white;
+    border-radius: 50%;
+  }
+  .line {
+    background-color: #444;
+    cursor: pointer;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  .line.horizontal {
+    height: 7px;
+    width: 65px;
+  }
+  .line.vertical {
+    height: 65px;
+    width: 7px;
+  }
+  .line.active {
+    cursor: default;
+  }
+  .box {
+    width: 65px;
+    height: 65px;
+    background-color: #2a2a2a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.6rem;
+    color: white;
+    user-select: none;
+    transition: background-color 0.4s ease;
+  }
+  .player-1 {
+    background-color: #4a90e2;
+  }
+  .player-2 {
+    background-color: #e94e77;
+  }
+  .player-3 {
+    background-color: #f5a623;
+  }
+  .player-4 {
+    background-color: #7ed321;
+  }
+  #status {
+    font-size: 1.7rem;
+    font-weight: 700;
+    margin: 1rem 0;
+    text-align: center;
+    padding: 0.7rem 1.4rem;
+    border-radius: 8px;
+  }
+  .blue-turn {
+    background-color: #4a90e2;
+    box-shadow: 0 0 12px #4a90e2;
+  }
+  .red-turn {
+    background-color: #e94e77;
+    box-shadow: 0 0 12px #e94e77;
+  }
+  .orange-turn {
+    background-color: #f5a623;
+    box-shadow: 0 0 12px #f5a623;
+  }
+  .green-turn {
+    background-color: #7ed321;
+    box-shadow: 0 0 12px #7ed321;
+  }
+  #winner-message {
+    font-size: 1.9rem;
+    font-weight: 800;
+    text-align: center;
+    margin: 1.5rem 0;
+    color: #00ff00;
+    text-shadow: 0 0 6px #00ff00;
+  }
+  #restart {
+    display: none;
+    margin: 0 auto 2rem auto;
+    padding: 12px 30px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    background-color: #555;
+    border: none;
+    border-radius: 10px;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  #restart:hover {
+    background-color: #777;
+  }
+  /* Modal */
+  #modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  #modal.active {
+    display: flex;
+  }
+  #modal-content {
+    background: #111;
+    padding: 2rem;
+    border-radius: 10px;
+    max-width: 400px;
+    width: 90%;
+    color: white;
+    text-align: center;
+  }
+  /* Button Active */
+  .mode-btn {
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  .mode-btn.active {
+    background-color: #4ade80; /* green-400 */
+    color: black;
+  }
+  /* Loader */
+  .loader {
+    border: 5px solid #444;
+    border-top: 5px solid #00ff00;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1.5s linear infinite;
+    margin: 0 auto 1rem auto;
+  }
+  @keyframes spin {
+    0% {transform: rotate(0deg);}
+    100% {transform: rotate(360deg);}
+  }
+  /* Bottom nav */
+  .bottom-nav {
+    border-top: 1px solid #555;
+    display: flex;
+    justify-content: space-around;
+    background-color: #121212;
+  }
+  .bottom-nav button {
+    flex-grow: 1;
+    padding: 1rem 0;
+    font-size: 1.1rem;
+    color: #bbb;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  .bottom-nav button.active, .bottom-nav button:hover {
+    background-color: #222;
+    color: white;
+  }
+</style>
 
-    /* Dot and Box Core Styles - as before */
-    .dot {
-      width: 14px;
-      height: 14px;
-      background-color: white;
-      border-radius: 50%;
-    }
-    .line {
-      background-color: #444;
-      cursor: pointer;
-      transition: background-color 0.3s ease, box-shadow 0.3s ease;
-    }
-    .line.horizontal {
-      height: 7px;
-      width: 65px;
-    }
-    .line.vertical {
-      height: 65px;
-      width: 7px;
-    }
-    .line.active {
-      cursor: default;
-      box-shadow: 0 0 8px #00ff00;
-    }
-    .box {
-      width: 65px;
-      height: 65px;
-      background-color: #2a2a2a;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      font-size: 1.6rem;
-      color: white;
-      user-select: none;
-      transition: background-color 0.4s ease;
-    }
-    .player-1 {
-      background-color: #4a90e2;
-    }
-    .player-2 {
-      background-color: #e94e77;
-    }
-    .player-3 {
-      background-color: #f5a623;
-    }
-    .player-4 {
-      background-color: #7ed321;
-    }
-    #status {
-      font-size: 1.7rem;
-      font-weight: 700;
-      margin: 1rem 0;
-      text-align: center;
-      padding: 0.7rem 1.4rem;
-      border-radius: 8px;
-    }
-    .blue-turn {
-      background-color: #4a90e2;
-      box-shadow: 0 0 12px #4a90e2;
-    }
-    .red-turn {
-      background-color: #e94e77;
-      box-shadow: 0 0 12px #e94e77;
-    }
-    .orange-turn {
-      background-color: #f5a623;
-      box-shadow: 0 0 12px #f5a623;
-    }
-    .green-turn {
-      background-color: #7ed321;
-      box-shadow: 0 0 12px #7ed321;
-    }
-    #winner-message {
-      font-size: 1.9rem;
-      font-weight: 800;
-      text-align: center;
-      margin: 1.5rem 0;
-      color: #00ff00;
-      text-shadow: 0 0 6px #00ff00;
-    }
-    #restart {
-      display: none;
-      margin: 0 auto 2rem auto;
-      padding: 12px 30px;
-      font-size: 1.2rem;
-      font-weight: 700;
-      background-color: #555;
-      border: none;
-      border-radius: 10px;
-      color: white;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-    }
-    #restart:hover {
-      background-color: #777;
-    }
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
-    /* Modal */
-    #modal {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.75);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
-    #modal.active {
-      display: flex;
-    }
-    #modal-content {
-      background: #111;
-      padding: 2rem;
-      border-radius: 10px;
-      max-width: 400px;
-      width: 90%;
-      color: white;
-      text-align: center;
-    }
-
-    /* Button Active */
-    .mode-btn {
-      transition: background-color 0.3s ease, color 0.3s ease;
-    }
-    .mode-btn.active {
-      background-color: #4ade80; /* green-400 */
-      color: black;
-    }
-
-    /* Loader */
-    .loader {
-      border: 5px solid #444;
-      border-top: 5px solid #00ff00;
-      border-radius: 50%;
-      width: 50px;
-      height: 50px;
-      animation: spin 1.5s linear infinite;
-      margin: 0 auto 1rem auto;
-    }
-    @keyframes spin {
-      0% {transform: rotate(0deg);}
-      100% {transform: rotate(360deg);}
-    }
-
-    /* Bottom nav */
-    .bottom-nav {
-      border-top: 1px solid #555;
-      display: flex;
-      justify-content: space-around;
-      background-color: #121212;
-    }
-    .bottom-nav button {
-      flex-grow: 1;
-      padding: 1rem 0;
-      font-size: 1.1rem;
-      color: #bbb;
-      background: none;
-      border: none;
-      cursor: pointer;
-      transition: background-color 0.3s;
-    }
-    .bottom-nav button.active, .bottom-nav button:hover {
-      background-color: #222;
-      color: white;
-    }
-
-    /* --- Friends Screen Styles --- */
-    #friend-search {
-      width: 100%;
-      max-width: 400px;
-      margin: 0 auto 1rem auto;
-      position: relative;
-    }
-    #friend-search input {
-      width: 100%;
-      padding: 12px 48px 12px 16px;
-      font-size: 1.1rem;
-      border-radius: 12px;
-      border: 2px solid #3b82f6; /* Tailwind blue-500 */
-      background-color: #1e40af; /* dark blue */
-      color: white;
-      transition: border-color 0.3s ease, box-shadow 0.3s ease;
-      outline: none;
-    }
-    #friend-search input:focus {
-      border-color: #60a5fa; /* lighter blue */
-      box-shadow: 0 0 8px #60a5fa;
-      background-color: #1e40af;
-    }
-    #friend-search svg {
-      position: absolute;
-      right: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 24px;
-      height: 24px;
-      stroke: #93c5fd; /* light blue */
-      pointer-events: none;
-    }
-
-    .friend-item, .search-result-item {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      background-color: #1e293b; /* slate-800 */
-      padding: 10px 14px;
-      border-radius: 12px;
-      margin-bottom: 8px;
-      transition: background-color 0.3s ease;
-    }
-    .friend-item:hover, .search-result-item:hover {
-      background-color: #334155; /* slate-700 */
-    }
-    .friend-avatar, .search-avatar {
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      object-fit: cover;
-      flex-shrink: 0;
-      border: 2px solid #60a5fa;
-    }
-    .friend-info, .search-info {
-      flex-grow: 1;
-    }
-    .friend-username, .search-username {
-      font-weight: 700;
-      font-size: 1.2rem;
-    }
-    .friend-rating, .search-rating {
-      color: #93c5fd; /* light blue */
-      font-size: 0.9rem;
-      font-weight: 600;
-      margin-top: 2px;
-    }
-    .add-friend-btn {
-      width: 40px;
-      height: 40px;
-      border-radius: 8px;
-      font-size: 1.8rem;
-      font-weight: 900;
-      line-height: 0;
-      text-align: center;
-      cursor: pointer;
-      user-select: none;
-      transition: background-color 0.3s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 2px solid #4ade80; /* green */
-      color: #4ade80;
-      background-color: transparent;
-    }
-    .add-friend-btn.added {
-      background-color: #dc2626; /* red-600 */
-      border-color: #dc2626;
-      color: white;
-      font-weight: 700;
-      font-size: 1.4rem;
-    }
-
-    /* Notification Icon on top right */
-    #notification-btn {
-      position: fixed;
-      top: 16px;
-      right: 16px;
-      font-size: 2rem;
-      cursor: pointer;
-      user-select: none;
-      color: #60a5fa;
-      z-index: 1500;
-      transition: color 0.3s ease;
-    }
-    #notification-btn:hover {
-      color: #93c5fd;
-    }
-
-    /* Notification Modal */
-    #notification-modal {
-      position: fixed;
-      top: 60px;
-      right: 20px;
-      width: 320px;
-      max-height: 400px;
-      background-color: #1e293b; /* slate-800 */
-      border-radius: 12px;
-      box-shadow: 0 0 15px rgba(0,0,0,0.8);
-      overflow-y: auto;
-      display: none;
-      z-index: 1600;
-      padding: 1rem;
-      color: white;
-    }
-    #notification-modal.active {
-      display: block;
-    }
-    .notification-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background-color: #334155;
-      padding: 10px 12px;
-      border-radius: 10px;
-      margin-bottom: 10px;
-      font-size: 0.95rem;
-      font-weight: 600;
-    }
-    .notification-text {
-      flex-grow: 1;
-      margin-right: 10px;
-    }
-    .notification-btn {
-      cursor: pointer;
-      font-size: 1.3rem;
-      user-select: none;
-      margin-left: 6px;
-      padding: 2px 6px;
-      border-radius: 6px;
-      transition: background-color 0.3s ease;
-    }
-    .notification-btn.accept {
-      background-color: #22c55e; /* green-500 */
-      color: white;
-    }
-    .notification-btn.accept:hover {
-      background-color: #16a34a; /* green-600 */
-    }
-    .notification-btn.decline {
-      background-color: #dc2626; /* red-600 */
-      color: white;
-    }
-    .notification-btn.decline:hover {
-      background-color: #b91c1c; /* red-700 */
-    }
-  </style>
-  
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 </head>
 <body class="min-h-screen flex flex-col">
-
-<!-- Notification Icon -->
-<div id="notification-btn" title="Notifications">🔔</div>
-
-<!-- Notification Modal -->
-<div id="notification-modal"></div>
 
 <!-- Auth Screen -->
 <div id="auth-screen" class="flex-grow flex flex-col items-center justify-center p-4">
@@ -372,14 +192,13 @@
 <div id="app" class="hidden flex-grow flex flex-col">
 
   <!-- Top Bar -->
-  <header class="flex justify-between items-center p-4 border-b border-gray-700 relative">
+  <header class="flex justify-between items-center p-4 border-b border-gray-700">
     <div><span id="username" class="font-bold text-xl"></span> | Rating: <span id="rating" class="font-semibold">0</span></div>
     <button onclick="showScreen('settings')" class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded font-semibold">Settings</button>
   </header>
 
   <!-- Screens Container -->
-  <main class="flex-grow overflow-auto p-4 max-w-4xl mx-auto w-full">
-
+  <main class="flex-grow overflow-auto p-4">
     <!-- Home Screen -->
     <section id="screen-home" class="space-y-6">
       <div class="flex justify-center space-x-4 mb-6">
@@ -409,24 +228,13 @@
     </section>
 
     <!-- Friends Screen -->
-    <section id="screen-friends" class="hidden max-w-md mx-auto">
-      <h2 class="text-3xl font-bold mb-4 text-center">Friends</h2>
-      
-      <!-- Search Box -->
-      <div id="friend-search" class="mb-4 relative">
-        <input type="text" id="search-input" placeholder="Search friends by username..." autocomplete="off" />
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      </div>
-
-      <!-- Search Results -->
-      <div id="search-results" class="mb-6"></div>
-
-      <!-- Friends List -->
-      <div id="friends-list" class="space-y-2"></div>
+    <section id="screen-friends" class="hidden">
+      <h2 class="text-3xl font-bold mb-6">Friends (Coming Soon)</h2>
+      <p>Here you will be able to add and play with friends.</p>
     </section>
 
     <!-- Settings Screen -->
-    <section id="screen-settings" class="hidden max-w-md mx-auto text-center">
+    <section id="screen-settings" class="hidden">
       <h2 class="text-3xl font-bold mb-6">Settings</h2>
       <button onclick="signOut()" class="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-semibold">Sign Out</button>
     </section>
@@ -455,13 +263,14 @@
 <script>
   // Firebase config - তোমার credentials বসাও এখানে
   const firebaseConfig = {
-  apiKey: "AIzaSyB-5CakD79CthsI-_vcqblOCN1sXS6U8u8",
-  authDomain: "dot-and-box-90d27.firebaseapp.com",
-  projectId: "dot-and-box-90d27",
-  storageBucket: "dot-and-box-90d27.firebasestorage.app",
-  messagingSenderId: "913945926983",
-  appId: "1:913945926983:web:b4c00c2cffff5b6fa7c062"
-};
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_AUTH_DOMAIN",
+    databaseURL: "YOUR_DB_URL",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_STORAGE_BUCKET",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
   firebase.initializeApp(firebaseConfig);
 
   const auth = firebase.auth();
@@ -476,340 +285,419 @@
   const startBtn = document.getElementById('start-btn');
   const matchLinkEl = document.getElementById('match-link');
   const statusEl = document.getElementById('status');
-  const gameBoardEl = document.getElementById('game-board');
+  const gameBoard = document.getElementById('game-board');
   const restartBtn = document.getElementById('restart');
-  const winnerMessageEl = document.getElementById('winner-message');
+  const winnerMessage = document.getElementById('winner-message');
+  const modal = document.getElementById('modal');
+  const modalLeaderboard = document.getElementById('modal-leaderboard');
+  const playersFoundEl = document.getElementById('players-found');
+  const totalPlayersEl = document.getElementById('total-players');
 
-  const leaderboardListEl = document.getElementById('leaderboard-list');
+  // Screens & Nav buttons
+  const screens = ['home','leaderboard','friends','settings'].map(name => document.getElementById(`screen-${name}`));
+  const navButtons = ['nav-home','nav-leaderboard','nav-friends','nav-settings'].map(id => document.getElementById(id));
 
-  // Friends Screen elements
-  const searchInput = document.getElementById('search-input');
-  const searchResultsEl = document.getElementById('search-results');
-  const friendsListEl = document.getElementById('friends-list');
-
-  // Notification elements
-  const notificationBtn = document.getElementById('notification-btn');
-  const notificationModal = document.getElementById('notification-modal');
-
-  // Screens
-  const screens = {
-    home: document.getElementById('screen-home'),
-    leaderboard: document.getElementById('screen-leaderboard'),
-    friends: document.getElementById('screen-friends'),
-    settings: document.getElementById('screen-settings'),
-  };
-
-  let currentUser = null;
-  let currentMode = 2;
-  let gameState = null;
+  // Game vars
+  let user = null;
+  let userRating = 1000;
+  let mode = 2;
   let matchId = null;
+  let players = [];
+  let currentPlayerIndex = 0;
+  let scores = {};
+  let lines = new Set();
+  let boardSize = 5; // 5 dots in row/col
+  let isMyTurn = false;
+  let colors = ['#4a90e2','#e94e77','#f5a623','#7ed321']; // Players colors
 
-  // User data cache
-  let userData = {};
+  // Show/Hide screens and nav button active states
+  function showScreen(name){
+    screens.forEach(s => s.classList.add('hidden'));
+    navButtons.forEach(btn => btn.classList.remove('active'));
+    document.getElementById(`screen-${name}`).classList.remove('hidden');
+    document.getElementById(`nav-${name}`).classList.add('active');
+  }
 
-  // For friends & requests
-  let friends = {};
-  let friendRequests = {};
-
-  // Initialize
-
-  auth.onAuthStateChanged(async (user) => {
-    if (user) {
-      currentUser = user;
+  // Authentication
+  auth.onAuthStateChanged(async (u) => {
+    if(u){
+      user = u;
       authScreen.style.display = 'none';
       app.style.display = 'flex';
+      usernameEl.textContent = u.displayName;
 
-      usernameEl.textContent = user.displayName || user.email;
-      ratingEl.textContent = '0';
+      const userRef = db.ref(`users/${u.uid}`);
+      const snapshot = await userRef.get();
+      if(snapshot.exists()){
+        userRating = snapshot.val().rating || 1000;
+      } else {
+        await userRef.set({displayName: u.displayName, rating: 1000});
+      }
+      ratingEl.textContent = userRating;
 
-      await loadUserData();
-      loadFriendsAndRequests();
-      setupNotificationListener();
-      selectMode(currentMode);
+      selectMode(2);
+      loadLeaderboard();
       showScreen('home');
     } else {
-      currentUser = null;
+      user = null;
       authScreen.style.display = 'flex';
       app.style.display = 'none';
     }
   });
 
-  async function loadUserData() {
-    const userRef = db.ref(`users/${currentUser.uid}`);
-    const snapshot = await userRef.once('value');
-    if (!snapshot.exists()) {
-      // Initialize new user data
-      await userRef.set({
-        username: currentUser.displayName || currentUser.email.split('@')[0],
-        rating: 0,
-        photoURL: currentUser.photoURL || '',
-      });
-    }
-    const data = (await userRef.once('value')).val();
-    usernameEl.textContent = data.username;
-    ratingEl.textContent = data.rating || 0;
-    userData[currentUser.uid] = data;
+  function signIn(){
+    auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+  }
+  function signOut(){
+    auth.signOut();
   }
 
-  // Sign In/Out
-  async function signIn() {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    await auth.signInWithPopup(provider);
-  }
-  async function signOut() {
-    await auth.signOut();
-  }
-
-  // Navigation
-  function showScreen(name) {
-    for (const key in screens) {
-      screens[key].classList.toggle('hidden', key !== name);
-    }
-    // Bottom nav active toggle
-    document.querySelectorAll('.bottom-nav button').forEach(btn => {
-      btn.classList.remove('active');
-    });
-    const navBtn = document.getElementById(`nav-${name}`);
-    if (navBtn) navBtn.classList.add('active');
-
-    // Clear search input and results when leaving friends screen
-    if (name !== 'friends') {
-      searchInput.value = '';
-      searchResultsEl.innerHTML = '';
-    }
-  }
-
-  // Mode selection
-  function selectMode(n) {
-    currentMode = n;
+  function selectMode(n){
+    mode = n;
     modeButtons.forEach(btn => btn.classList.remove('active'));
-    const btn = document.getElementById(`mode-${n}`);
-    if (btn) btn.classList.add('active');
+    document.getElementById(`mode-${n}`).classList.add('active');
+    totalPlayersEl.textContent = n;
   }
 
-  // Start a match (stub)
-  function startMatch() {
-    alert(`Starting an online match for ${currentMode} players. (Functionality to be implemented)`);
-  }
+  // Load leaderboard for modal and leaderboard screen
+  async function loadLeaderboard(){
+    const snapshot = await db.ref('users').orderByChild('rating').limitToLast(20).get();
+    const users = [];
+    snapshot.forEach(child => users.push(child.val()));
+    users.sort((a,b)=>b.rating - a.rating);
 
-  // Restart game (stub)
-  function restartGame() {
-    alert('Restarting game (functionality to be implemented)');
-  }
+    // Clear both
+    modalLeaderboard.innerHTML = '';
+    const leaderboardList = document.getElementById('leaderboard-list');
+    leaderboardList.innerHTML = '';
 
-  // --- Friends Screen Logic ---
+    users.forEach((u,i) => {
+      const entry = document.createElement('div');
+      entry.className = "mb-1";
+      entry.textContent = `#${i+1} ${u.displayName} — Rating: ${u.rating}`;
+      modalLeaderboard.appendChild(entry);
 
-  // Load friends & requests
-  async function loadFriendsAndRequests() {
-    if (!currentUser) return;
-
-    // Friends path: users/{uid}/friends/{friendUid}: true
-    const friendsRef = db.ref(`users/${currentUser.uid}/friends`);
-    friendsRef.on('value', snapshot => {
-      friends = snapshot.val() || {};
-      renderFriends();
-    });
-
-    // Friend requests: users/{uid}/friendRequests/{requestId}: {fromUid, username, photoURL}
-    const requestsRef = db.ref(`users/${currentUser.uid}/friendRequests`);
-    requestsRef.on('value', snapshot => {
-      friendRequests = snapshot.val() || {};
-      renderNotifications();
+      // Also for main leaderboard
+      const e2 = entry.cloneNode(true);
+      leaderboardList.appendChild(e2);
     });
   }
 
-  // Render friend list
-  async function renderFriends() {
-    friendsListEl.innerHTML = '';
-    const friendUids = Object.keys(friends);
+  // Start matchmaking with automatic matching for players in same mode
+  async function startMatch(){
+    modal.classList.add('active');
+    players = [];
+    currentPlayerIndex = 0;
+    scores = {};
+    lines.clear();
+    winnerMessage.textContent = '';
+    restartBtn.style.display = 'none';
+    gameBoard.innerHTML = '';
+    matchLinkEl.textContent = '';
 
-    if (friendUids.length === 0) {
-      friendsListEl.innerHTML = '<p class="text-center text-gray-400">No friends added yet.</p>';
-      return;
-    }
+    totalPlayersEl.textContent = mode;
+    updatePlayersFoundUI(1);
 
-    for (const friendUid of friendUids) {
-      let friendInfo = userData[friendUid];
-      if (!friendInfo) {
-        // Fetch user info
-        const snapshot = await db.ref(`users/${friendUid}`).once('value');
-        friendInfo = snapshot.val();
-        if (friendInfo) userData[friendUid] = friendInfo;
+    // Look for open match slots of this mode
+    const matchesRef = db.ref('matchSlots');
+    const matchesSnap = await matchesRef.orderByChild('mode').equalTo(mode).get();
+
+    let joinedMatch = null;
+    matchesSnap.forEach(snap => {
+      const val = snap.val();
+      if(val.players && Object.keys(val.players).length < mode){
+        joinedMatch = snap.key;
+        return true; // break loop
       }
-      if (!friendInfo) continue; // skip if no info
+    });
 
-      const el = document.createElement('div');
-      el.className = 'friend-item';
-      el.innerHTML = `
-        <img src="${friendInfo.photoURL || 'https://via.placeholder.com/56?text=U'}" alt="avatar" class="friend-avatar" />
-        <div class="friend-info">
-          <div class="friend-username">${friendInfo.username}</div>
-          <div class="friend-rating">Rating: ${friendInfo.rating || 0}</div>
-        </div>
-      `;
-      friendsListEl.appendChild(el);
+    if(joinedMatch){
+      // Join this match
+      const matchRef = db.ref(`matchSlots/${joinedMatch}/players`);
+      const playersSnap = await matchRef.get();
+      if(playersSnap.exists()){
+        const currentPlayers = playersSnap.val();
+        if(!currentPlayers[user.uid]){
+          currentPlayers[user.uid] = {name: user.displayName};
+          await matchRef.set(currentPlayers);
+        }
+        players = Object.keys(currentPlayers);
+        matchId = joinedMatch;
+      }
+    } else {
+      // Create new match slot
+      const newMatchRef = matchesRef.push();
+      matchId = newMatchRef.key;
+      await newMatchRef.set({mode, players: {[user.uid]: {name: user.displayName}}});
+      players = [user.uid];
     }
+
+    updatePlayersFoundUI(players.length);
+
+    // Listen for changes
+    const currentMatchRef = db.ref(`matchSlots/${matchId}`);
+    currentMatchRef.on('value', async snap => {
+      const val = snap.val();
+      if(!val) return;
+      players = val.players ? Object.keys(val.players) : [];
+      updatePlayersFoundUI(players.length);
+
+      if(players.length === mode){
+        // Start game
+        currentMatchRef.off();
+        await db.ref(`matches/${matchId}`).set({
+          players,
+          mode,
+          started: true
+        });
+        await db.ref(`matchSlots/${matchId}`).remove();
+
+        modal.classList.remove('active');
+        initGame();
+      }
+    });
   }
 
-  // Search users by username (simple startsWith, case insensitive)
-  let searchTimeout = null;
-  searchInput.addEventListener('input', () => {
-    clearTimeout(searchTimeout);
-    const val = searchInput.value.trim().toLowerCase();
-    if (val === '') {
-      searchResultsEl.innerHTML = '';
-      return;
-    }
-    searchTimeout = setTimeout(() => {
-      searchUsers(val);
-    }, 300);
-  });
+  // Update the "Players found: X / N" text in modal
+  function updatePlayersFoundUI(currentCount){
+    playersFoundEl.innerHTML = `Players found: ${currentCount}/${mode}`;
+  }
 
-  async function searchUsers(query) {
-    // Clear previous
-    searchResultsEl.innerHTML = '<p class="text-center text-gray-400">Searching...</p>';
+  // Initialize the game board and variables
+  function initGame(){
+    isMyTurn = (players[currentPlayerIndex] === user.uid);
+    lines.clear();
+    scores = {};
+    winnerMessage.textContent = '';
+    restartBtn.style.display = 'none';
+    matchLinkEl.textContent = '';
 
-    // Firebase Realtime DB does not have great text search;
-    // so we get all users and filter client-side for demo (not scalable)
+    // Setup scores for each player
+    players.forEach((p, idx) => {
+      scores[p] = 0;
+    });
 
-    const snapshot = await db.ref('users').once('value');
-    const allUsers = snapshot.val() || {};
+    createBoard();
+    updateStatus();
+  }
 
-    // Filter by username startWith query, exclude self and existing friends
-    const results = [];
-    for (const uid in allUsers) {
-      if (uid === currentUser.uid) continue;
-      const user = allUsers[uid];
-      if (!user.username) continue;
-      if (user.username.toLowerCase().startsWith(query)) {
-        if (!friends[uid]) { // exclude existing friends
-          results.push({ uid, ...user });
+  // Create the Dot and Box board UI grid
+  function createBoard(){
+    // Clear previous board
+    gameBoard.innerHTML = '';
+
+    // Board size is dots count per row/col, so boxes are (boardSize-1)^2
+    // Grid structure: alternating dot-line-dot-line ... (2*boardSize-1 rows and cols)
+    const gridSize = 2 * boardSize - 1;
+    gameBoard.style.gridTemplateColumns = `repeat(${gridSize}, auto)`;
+    gameBoard.style.gridTemplateRows = `repeat(${gridSize}, auto)`;
+
+    for(let row=0; row<gridSize; row++){
+      for(let col=0; col<gridSize; col++){
+        if(row % 2 === 0 && col % 2 === 0){
+          // Dot
+          const dot = document.createElement('div');
+          dot.className = 'dot';
+          gameBoard.appendChild(dot);
+        } else if(row % 2 === 0){
+          // Horizontal line
+          const line = document.createElement('div');
+          line.className = 'line horizontal';
+          line.dataset.type = 'h';
+          line.dataset.row = row;
+          line.dataset.col = col;
+          line.onclick = () => handleLineClick(line);
+          gameBoard.appendChild(line);
+        } else if(col % 2 === 0){
+          // Vertical line
+          const line = document.createElement('div');
+          line.className = 'line vertical';
+          line.dataset.type = 'v';
+          line.dataset.row = row;
+          line.dataset.col = col;
+          line.onclick = () => handleLineClick(line);
+          gameBoard.appendChild(line);
+        } else {
+          // Box
+          const box = document.createElement('div');
+          box.className = 'box';
+          box.dataset.row = row;
+          box.dataset.col = col;
+          gameBoard.appendChild(box);
         }
       }
     }
+  }
 
-    if (results.length === 0) {
-      searchResultsEl.innerHTML = '<p class="text-center text-gray-400">No users found.</p>';
-      return;
-    }
+  // Handle clicking on a line
+  function handleLineClick(line){
+    if(!isMyTurn) return; // Only current player can play
 
-    // Render search results
-    searchResultsEl.innerHTML = '';
-    for (const user of results) {
-      const div = document.createElement('div');
-      div.className = 'search-result-item';
-      div.innerHTML = `
-        <img src="${user.photoURL || 'https://via.placeholder.com/56?text=U'}" alt="avatar" class="search-avatar" />
-        <div class="search-info">
-          <div class="search-username">${user.username}</div>
-          <div class="search-rating">Rating: ${user.rating || 0}</div>
-        </div>
-        <button class="add-friend-btn" data-uid="${user.uid}" title="Add Friend">+</button>
-      `;
-      const btn = div.querySelector('.add-friend-btn');
-      btn.addEventListener('click', () => {
-        sendFriendRequest(user.uid, user.username, user.photoURL);
-        btn.classList.add('added');
-        btn.textContent = 'X';
-        btn.title = 'Cancel Request';
-        btn.onclick = () => {
-          cancelFriendRequest(user.uid, btn);
-        };
+    if(line.classList.contains('active')) return; // Already taken
+
+    const lineId = `${line.dataset.type}${line.dataset.row}-${line.dataset.col}`;
+    if(lines.has(lineId)) return; // Defensive
+
+    // Mark line as active and record it
+    line.classList.add('active');
+    line.style.backgroundColor = colors[currentPlayerIndex];
+    lines.add(lineId);
+
+    // Check if this move completes any boxes
+    const completedBoxes = checkCompletedBoxes(line.dataset.type, parseInt(line.dataset.row), parseInt(line.dataset.col));
+    if(completedBoxes.length > 0){
+      // Mark boxes with current player color and increment score
+      completedBoxes.forEach(box => {
+        box.element.classList.add(`player-${currentPlayerIndex+1}`);
+        scores[players[currentPlayerIndex]]++;
       });
-      searchResultsEl.appendChild(div);
+      updateStatus();
+      // Player gets another turn - do not change currentPlayerIndex
+    } else {
+      // No boxes completed - next player's turn
+      currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+      isMyTurn = (players[currentPlayerIndex] === user.uid);
+      updateStatus();
+    }
+
+    // Check if game ended
+    if(lines.size === ((boardSize-1) * boardSize * 2)){ // total lines count: horizontal + vertical lines
+      endGame();
     }
   }
 
-  // Send friend request
-  async function sendFriendRequest(friendUid, friendUsername, friendPhotoURL) {
-    if (!currentUser) return;
-    const requestRef = db.ref(`users/${friendUid}/friendRequests/${currentUser.uid}`);
-    await requestRef.set({
-      fromUid: currentUser.uid,
-      username: userData[currentUser.uid]?.username || currentUser.displayName || 'Unknown',
-      photoURL: userData[currentUser.uid]?.photoURL || currentUser.photoURL || '',
-      timestamp: Date.now()
-    });
-  }
+  // Check which boxes got completed by last line placed
+  function checkCompletedBoxes(type, row, col){
+    const completed = [];
+    // Boxes are on odd row and col positions
+    // Check up to 2 boxes that this line may complete
 
-  // Cancel friend request
-  async function cancelFriendRequest(friendUid, btn) {
-    if (!currentUser) return;
-    const requestRef = db.ref(`users/${friendUid}/friendRequests/${currentUser.uid}`);
-    await requestRef.remove();
-    btn.classList.remove('added');
-    btn.textContent = '+';
-    btn.title = 'Add Friend';
-    btn.onclick = () => {
-      sendFriendRequest(friendUid);
-      btn.classList.add('added');
-      btn.textContent = 'X';
-      btn.title = 'Cancel Request';
-      btn.onclick = () => cancelFriendRequest(friendUid, btn);
-    };
-  }
-
-  // Notifications: show friend requests received
-  function renderNotifications() {
-    notificationModal.innerHTML = '';
-    const keys = Object.keys(friendRequests);
-    if (keys.length === 0) {
-      notificationModal.innerHTML = '<p class="text-center text-gray-400">No friend requests.</p>';
-      return;
+    function getLineId(t,r,c){
+      return `${t}${r}-${c}`;
     }
-    keys.forEach(uid => {
-      const req = friendRequests[uid];
-      const div = document.createElement('div');
-      div.className = 'notification-item';
-      div.innerHTML = `
-        <div class="notification-text">${req.username} sent you a friend request</div>
-        <button class="notification-btn decline" title="Decline">✗</button>
-        <button class="notification-btn accept" title="Accept">✓</button>
-      `;
-      const declineBtn = div.querySelector('.decline');
-      const acceptBtn = div.querySelector('.accept');
 
-      declineBtn.onclick = async () => {
-        await db.ref(`users/${currentUser.uid}/friendRequests/${uid}`).remove();
-      };
-
-      acceptBtn.onclick = async () => {
-        // Add each other as friends
-        const updates = {};
-        updates[`users/${currentUser.uid}/friends/${uid}`] = true;
-        updates[`users/${uid}/friends/${currentUser.uid}`] = true;
-        updates[`users/${currentUser.uid}/friendRequests/${uid}`] = null;
-        await db.ref().update(updates);
-      };
-
-      notificationModal.appendChild(div);
-    });
-  }
-
-  // Toggle notification modal visibility
-  notificationBtn.addEventListener('click', () => {
-    notificationModal.classList.toggle('active');
-  });
-
-  // Close notification modal if clicking outside
-  window.addEventListener('click', (e) => {
-    if (!notificationModal.contains(e.target) && e.target !== notificationBtn) {
-      notificationModal.classList.remove('active');
+    // Helper to get box element by row,col
+    function getBox(r,c){
+      if(r < 0 || c < 0) return null;
+      const gridSize = 2*boardSize - 1;
+      if(r >= gridSize || c >= gridSize) return null;
+      // Box elements are divs with class "box" in gameBoard children
+      // Because the board is a grid, we can find the index:
+      // index = r*gridSize + c
+      const idx = r * gridSize + c;
+      const el = gameBoard.children[idx];
+      if(el && el.classList.contains('box')) return el;
+      return null;
     }
-  });
 
-  // Listen for new notifications and update notification icon (optional: badge)
-  function setupNotificationListener() {
-    // Optionally, can add badge count on notification icon for pending requests
-    const notifRef = db.ref(`users/${currentUser.uid}/friendRequests`);
-    notifRef.on('value', snapshot => {
-      const val = snapshot.val();
-      if (val && Object.keys(val).length > 0) {
-        notificationBtn.textContent = '🔔•'; // with badge dot
-      } else {
-        notificationBtn.textContent = '🔔';
+    const gridSize = 2*boardSize - 1;
+
+    if(type === 'h'){
+      // Horizontal line at (row, col) is above box at (row+1,col) and below box at (row-1,col)
+      // Check box below
+      const boxBelow = getBox(row+1, col);
+      if(boxBelow){
+        // Check all 4 lines of this box:
+        // Top horizontal: h(row, col)
+        // Bottom horizontal: h(row+2, col)
+        // Left vertical: v(row+1, col-1)
+        // Right vertical: v(row+1, col+1)
+        const top = getLineId('h', row, col);
+        const bottom = getLineId('h', row+2, col);
+        const left = getLineId('v', row+1, col-1);
+        const right = getLineId('v', row+1, col+1);
+        if(lines.has(top) && lines.has(bottom) && lines.has(left) && lines.has(right)){
+          completed.push({element: boxBelow});
+        }
       }
+      // Check box above
+      const boxAbove = getBox(row-1, col);
+      if(boxAbove){
+        const top = getLineId('h', row-2, col);
+        const bottom = getLineId('h', row, col);
+        const left = getLineId('v', row-1, col-1);
+        const right = getLineId('v', row-1, col+1);
+        if(lines.has(top) && lines.has(bottom) && lines.has(left) && lines.has(right)){
+          completed.push({element: boxAbove});
+        }
+      }
+    } else if(type === 'v'){
+      // Vertical line at (row, col) is left of box at (row, col+1) and right of box at (row, col-1)
+      // Check box right
+      const boxRight = getBox(row, col+1);
+      if(boxRight){
+        const top = getLineId('h', row-1, col+1);
+        const bottom = getLineId('h', row+1, col+1);
+        const left = getLineId('v', row, col);
+        const right = getLineId('v', row, col+2);
+        if(lines.has(top) && lines.has(bottom) && lines.has(left) && lines.has(right)){
+          completed.push({element: boxRight});
+        }
+      }
+      // Check box left
+      const boxLeft = getBox(row, col-1);
+      if(boxLeft){
+        const top = getLineId('h', row-1, col-1);
+        const bottom = getLineId('h', row+1, col-1);
+        const left = getLineId('v', row, col-2);
+        const right = getLineId('v', row, col);
+        if(lines.has(top) && lines.has(bottom) && lines.has(left) && lines.has(right)){
+          completed.push({element: boxLeft});
+        }
+      }
+    }
+    return completed;
+  }
+
+  // Update status bar showing current player turn and scores
+  function updateStatus(){
+    const playerName = players[currentPlayerIndex] === user.uid ? "Your turn" : `Player ${currentPlayerIndex+1}'s turn`;
+    statusEl.textContent = playerName;
+
+    // Update status color
+    const colorsClass = ['blue-turn', 'red-turn', 'orange-turn', 'green-turn'];
+    statusEl.className = colorsClass[currentPlayerIndex];
+
+    // Optionally show scores in status
+    let scoreText = 'Scores: ';
+    players.forEach((p,i) => {
+      const n = p === user.uid ? "You" : `P${i+1}`;
+      scoreText += `${n}: ${scores[p]} `;
     });
+    statusEl.textContent = `${playerName} | ${scoreText.trim()}`;
+  }
+
+  // End the game and show winner
+  function endGame(){
+    restartBtn.style.display = 'block';
+    isMyTurn = false;
+
+    // Find max score
+    let maxScore = -1;
+    players.forEach(p => {
+      if(scores[p] > maxScore) maxScore = scores[p];
+    });
+    // Find all winners (tie possible)
+    const winners = players.filter(p => scores[p] === maxScore);
+
+    if(winners.length === 1){
+      const winnerIndex = players.indexOf(winners[0]);
+      winnerMessage.textContent = (winners[0] === user.uid) ? "You won! 🎉" : `Player ${winnerIndex+1} won! 🎉`;
+    } else {
+      winnerMessage.textContent = "It's a tie!";
+    }
+  }
+
+  // Restart the current game (local)
+  function restartGame(){
+    lines.clear();
+    scores = {};
+    winnerMessage.textContent = '';
+    restartBtn.style.display = 'none';
+    currentPlayerIndex = 0;
+    isMyTurn = (players[currentPlayerIndex] === user.uid);
+    createBoard();
+    updateStatus();
   }
 
 </script>
