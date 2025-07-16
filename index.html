@@ -1,191 +1,366 @@
 <!DOCTYPE html>
 <html lang="en" class="bg-gray-900 text-white">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Dot and Box Online Multiplayer with Friends & Notifications</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dot and Box Online Multiplayer with Friends</title>
 
-<!-- Tailwind CDN -->
-<script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
 
-<style>
-  body {
-    font-family: 'Inter', sans-serif;
-  }
-  /* Friends Screen Search Input */
-  #friend-search {
-    width: 100%;
-    max-width: 480px;
-    margin: 0 auto 1rem auto;
-    padding: 0.5rem 1rem;
-    font-size: 1.1rem;
-    border-radius: 12px;
-    border: 2px solid #3b82f6;
-    background: transparent;
-    color: white;
-    outline: none;
-    box-shadow:
-      0 0 8px #3b82f6,
-      inset 0 0 6px #3b82f6;
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
-  }
-  #friend-search:focus {
-    border-color: #60a5fa;
-    box-shadow:
-      0 0 12px #60a5fa,
-      inset 0 0 8px #60a5fa;
-  }
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
 
-  /* Friend / Search Result item */
-  .friend-item, .search-item {
-    max-width: 480px;
-    background: #1e40af33; /* translucent blue */
-    margin: 0.4rem auto;
-    padding: 0.6rem 1rem;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    cursor: default;
-    transition: background-color 0.2s ease;
-  }
-  .friend-item:hover, .search-item:hover {
-    background: #1e40af88;
-  }
+    /* Dot and Box Core Styles - as before */
+    .dot {
+      width: 14px;
+      height: 14px;
+      background-color: white;
+      border-radius: 50%;
+    }
+    .line {
+      background-color: #444;
+      cursor: pointer;
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    .line.horizontal {
+      height: 7px;
+      width: 65px;
+    }
+    .line.vertical {
+      height: 65px;
+      width: 7px;
+    }
+    .line.active {
+      cursor: default;
+      box-shadow: 0 0 8px #00ff00;
+    }
+    .box {
+      width: 65px;
+      height: 65px;
+      background-color: #2a2a2a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.6rem;
+      color: white;
+      user-select: none;
+      transition: background-color 0.4s ease;
+    }
+    .player-1 {
+      background-color: #4a90e2;
+    }
+    .player-2 {
+      background-color: #e94e77;
+    }
+    .player-3 {
+      background-color: #f5a623;
+    }
+    .player-4 {
+      background-color: #7ed321;
+    }
+    #status {
+      font-size: 1.7rem;
+      font-weight: 700;
+      margin: 1rem 0;
+      text-align: center;
+      padding: 0.7rem 1.4rem;
+      border-radius: 8px;
+    }
+    .blue-turn {
+      background-color: #4a90e2;
+      box-shadow: 0 0 12px #4a90e2;
+    }
+    .red-turn {
+      background-color: #e94e77;
+      box-shadow: 0 0 12px #e94e77;
+    }
+    .orange-turn {
+      background-color: #f5a623;
+      box-shadow: 0 0 12px #f5a623;
+    }
+    .green-turn {
+      background-color: #7ed321;
+      box-shadow: 0 0 12px #7ed321;
+    }
+    #winner-message {
+      font-size: 1.9rem;
+      font-weight: 800;
+      text-align: center;
+      margin: 1.5rem 0;
+      color: #00ff00;
+      text-shadow: 0 0 6px #00ff00;
+    }
+    #restart {
+      display: none;
+      margin: 0 auto 2rem auto;
+      padding: 12px 30px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      background-color: #555;
+      border: none;
+      border-radius: 10px;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    #restart:hover {
+      background-color: #777;
+    }
 
-  .friend-photo {
-    width: 56px;
-    height: 56px;
-    border-radius: 9999px;
-    object-fit: cover;
-    flex-shrink: 0;
-  }
-  .friend-info {
-    flex-grow: 1;
-  }
-  .friend-name {
-    font-size: 1.15rem;
-    font-weight: 600;
-  }
-  .friend-rating {
-    font-size: 0.9rem;
-    color: #93c5fd; /* light blue */
-  }
+    /* Modal */
+    #modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    #modal.active {
+      display: flex;
+    }
+    #modal-content {
+      background: #111;
+      padding: 2rem;
+      border-radius: 10px;
+      max-width: 400px;
+      width: 90%;
+      color: white;
+      text-align: center;
+    }
 
-  /* Add Friend Button */
-  .add-friend-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
-    background: #2563eb; /* blue-600 */
-    color: white;
-    font-weight: 700;
-    font-size: 1.6rem;
-    line-height: 36px;
-    text-align: center;
-    user-select: none;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-  }
-  .add-friend-btn.added {
-    background: #dc2626; /* red-600 */
-  }
-  .add-friend-btn:hover {
-    background-color: #3b82f6;
-  }
-  .add-friend-btn.added:hover {
-    background-color: #b91c1c;
-  }
+    /* Button Active */
+    .mode-btn {
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    .mode-btn.active {
+      background-color: #4ade80; /* green-400 */
+      color: black;
+    }
 
-  /* Notification Icon */
-  #notification-icon {
-    font-size: 1.8rem;
-    cursor: pointer;
-    position: relative;
-  }
-  #notification-icon .badge {
-    position: absolute;
-    top: -6px;
-    right: -10px;
-    background: #dc2626;
-    color: white;
-    font-size: 0.75rem;
-    padding: 2px 6px;
-    border-radius: 9999px;
-    font-weight: 700;
-  }
+    /* Loader */
+    .loader {
+      border: 5px solid #444;
+      border-top: 5px solid #00ff00;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1.5s linear infinite;
+      margin: 0 auto 1rem auto;
+    }
+    @keyframes spin {
+      0% {transform: rotate(0deg);}
+      100% {transform: rotate(360deg);}
+    }
 
-  /* Notification Modal */
-  #notification-modal {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.75);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 1100;
-  }
-  #notification-modal.active {
-    display: flex;
-  }
-  #notification-content {
-    background: #111827;
-    padding: 1.5rem;
-    border-radius: 12px;
-    width: 90%;
-    max-width: 480px;
-    max-height: 80vh;
-    overflow-y: auto;
-    color: white;
-  }
-  #notification-content h3 {
-    font-size: 1.6rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-  }
-  .notification-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: #1e40af33;
-    padding: 0.7rem 1rem;
-    border-radius: 8px;
-    margin-bottom: 0.6rem;
-  }
-  .notification-text {
-    flex-grow: 1;
-  }
-  .notification-buttons {
-    display: flex;
-    gap: 0.5rem;
-  }
-  .notif-btn {
-    cursor: pointer;
-    font-size: 1.4rem;
-    user-select: none;
-    transition: color 0.2s ease;
-  }
-  .notif-btn.accept {
-    color: #22c55e; /* green */
-  }
-  .notif-btn.accept:hover {
-    color: #16a34a;
-  }
-  .notif-btn.decline {
-    color: #ef4444; /* red */
-  }
-  .notif-btn.decline:hover {
-    color: #b91c1c;
-  }
-</style>
+    /* Bottom nav */
+    .bottom-nav {
+      border-top: 1px solid #555;
+      display: flex;
+      justify-content: space-around;
+      background-color: #121212;
+    }
+    .bottom-nav button {
+      flex-grow: 1;
+      padding: 1rem 0;
+      font-size: 1.1rem;
+      color: #bbb;
+      background: none;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    .bottom-nav button.active, .bottom-nav button:hover {
+      background-color: #222;
+      color: white;
+    }
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    /* --- Friends Screen Styles --- */
+    #friend-search {
+      width: 100%;
+      max-width: 400px;
+      margin: 0 auto 1rem auto;
+      position: relative;
+    }
+    #friend-search input {
+      width: 100%;
+      padding: 12px 48px 12px 16px;
+      font-size: 1.1rem;
+      border-radius: 12px;
+      border: 2px solid #3b82f6; /* Tailwind blue-500 */
+      background-color: #1e40af; /* dark blue */
+      color: white;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+      outline: none;
+    }
+    #friend-search input:focus {
+      border-color: #60a5fa; /* lighter blue */
+      box-shadow: 0 0 8px #60a5fa;
+      background-color: #1e40af;
+    }
+    #friend-search svg {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 24px;
+      height: 24px;
+      stroke: #93c5fd; /* light blue */
+      pointer-events: none;
+    }
 
+    .friend-item, .search-result-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background-color: #1e293b; /* slate-800 */
+      padding: 10px 14px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+      transition: background-color 0.3s ease;
+    }
+    .friend-item:hover, .search-result-item:hover {
+      background-color: #334155; /* slate-700 */
+    }
+    .friend-avatar, .search-avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 2px solid #60a5fa;
+    }
+    .friend-info, .search-info {
+      flex-grow: 1;
+    }
+    .friend-username, .search-username {
+      font-weight: 700;
+      font-size: 1.2rem;
+    }
+    .friend-rating, .search-rating {
+      color: #93c5fd; /* light blue */
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .add-friend-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      font-size: 1.8rem;
+      font-weight: 900;
+      line-height: 0;
+      text-align: center;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #4ade80; /* green */
+      color: #4ade80;
+      background-color: transparent;
+    }
+    .add-friend-btn.added {
+      background-color: #dc2626; /* red-600 */
+      border-color: #dc2626;
+      color: white;
+      font-weight: 700;
+      font-size: 1.4rem;
+    }
+
+    /* Notification Icon on top right */
+    #notification-btn {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      font-size: 2rem;
+      cursor: pointer;
+      user-select: none;
+      color: #60a5fa;
+      z-index: 1500;
+      transition: color 0.3s ease;
+    }
+    #notification-btn:hover {
+      color: #93c5fd;
+    }
+
+    /* Notification Modal */
+    #notification-modal {
+      position: fixed;
+      top: 60px;
+      right: 20px;
+      width: 320px;
+      max-height: 400px;
+      background-color: #1e293b; /* slate-800 */
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.8);
+      overflow-y: auto;
+      display: none;
+      z-index: 1600;
+      padding: 1rem;
+      color: white;
+    }
+    #notification-modal.active {
+      display: block;
+    }
+    .notification-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #334155;
+      padding: 10px 12px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+    .notification-text {
+      flex-grow: 1;
+      margin-right: 10px;
+    }
+    .notification-btn {
+      cursor: pointer;
+      font-size: 1.3rem;
+      user-select: none;
+      margin-left: 6px;
+      padding: 2px 6px;
+      border-radius: 6px;
+      transition: background-color 0.3s ease;
+    }
+    .notification-btn.accept {
+      background-color: #22c55e; /* green-500 */
+      color: white;
+    }
+    .notification-btn.accept:hover {
+      background-color: #16a34a; /* green-600 */
+    }
+    .notification-btn.decline {
+      background-color: #dc2626; /* red-600 */
+      color: white;
+    }
+    .notification-btn.decline:hover {
+      background-color: #b91c1c; /* red-700 */
+    }
+  </style>
+  
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 </head>
 <body class="min-h-screen flex flex-col">
+
+<!-- Notification Icon -->
+<div id="notification-btn" title="Notifications">🔔</div>
+
+<!-- Notification Modal -->
+<div id="notification-modal"></div>
 
 <!-- Auth Screen -->
 <div id="auth-screen" class="flex-grow flex flex-col items-center justify-center p-4">
@@ -197,23 +372,34 @@
 <div id="app" class="hidden flex-grow flex flex-col">
 
   <!-- Top Bar -->
-  <header class="flex justify-between items-center p-4 border-b border-gray-700">
-    <div>
-      <span id="username" class="font-bold text-xl"></span> | Rating: <span id="rating" class="font-semibold">0</span>
-    </div>
-    <div class="flex items-center space-x-6">
-      <div id="notification-icon" title="Notifications">🔔<span class="badge" style="display:none">0</span></div>
-      <button onclick="showScreen('settings')" class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded font-semibold">Settings</button>
-    </div>
+  <header class="flex justify-between items-center p-4 border-b border-gray-700 relative">
+    <div><span id="username" class="font-bold text-xl"></span> | Rating: <span id="rating" class="font-semibold">0</span></div>
+    <button onclick="showScreen('settings')" class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded font-semibold">Settings</button>
   </header>
 
   <!-- Screens Container -->
-  <main class="flex-grow overflow-auto p-4">
+  <main class="flex-grow overflow-auto p-4 max-w-4xl mx-auto w-full">
 
     <!-- Home Screen -->
     <section id="screen-home" class="space-y-6">
-      <!-- (your existing home screen content here) -->
-      <p>Home Screen Content...</p>
+      <div class="flex justify-center space-x-4 mb-6">
+        <button id="mode-2" class="mode-btn px-5 py-2 border border-white rounded" onclick="selectMode(2)">2 Players</button>
+        <button id="mode-3" class="mode-btn px-5 py-2 border border-white rounded" onclick="selectMode(3)">3 Players</button>
+        <button id="mode-4" class="mode-btn px-5 py-2 border border-white rounded" onclick="selectMode(4)">4 Players</button>
+      </div>
+      <div class="flex justify-center mb-6">
+        <button id="start-btn" class="bg-green-600 hover:bg-green-700 px-8 py-3 rounded-lg font-semibold" onclick="startMatch()">Start Online Game</button>
+      </div>
+
+      <div id="match-link" class="text-center mb-6 text-sm text-blue-400"></div>
+
+      <div id="status" class="blue-turn"></div>
+
+      <div id="game-board" class="mx-auto grid gap-1" style="user-select:none;"></div>
+
+      <button id="restart" onclick="restartGame()">Restart Game</button>
+
+      <div id="winner-message"></div>
     </section>
 
     <!-- Leaderboard Screen -->
@@ -223,25 +409,24 @@
     </section>
 
     <!-- Friends Screen -->
-    <section id="screen-friends" class="hidden">
-      <h2 class="text-3xl font-bold mb-4">Friends</h2>
-      <input
-        type="text"
-        id="friend-search"
-        placeholder="Search friends by username..."
-        autocomplete="off"
-        spellcheck="false"
-      />
-      <div id="friends-list" class="mb-6">
-        <!-- Friends will be rendered here -->
+    <section id="screen-friends" class="hidden max-w-md mx-auto">
+      <h2 class="text-3xl font-bold mb-4 text-center">Friends</h2>
+      
+      <!-- Search Box -->
+      <div id="friend-search" class="mb-4 relative">
+        <input type="text" id="search-input" placeholder="Search friends by username..." autocomplete="off" />
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       </div>
-      <div id="search-results" class="mb-6">
-        <!-- Search results will appear here -->
-      </div>
+
+      <!-- Search Results -->
+      <div id="search-results" class="mb-6"></div>
+
+      <!-- Friends List -->
+      <div id="friends-list" class="space-y-2"></div>
     </section>
 
     <!-- Settings Screen -->
-    <section id="screen-settings" class="hidden">
+    <section id="screen-settings" class="hidden max-w-md mx-auto text-center">
       <h2 class="text-3xl font-bold mb-6">Settings</h2>
       <button onclick="signOut()" class="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-semibold">Sign Out</button>
     </section>
@@ -256,28 +441,27 @@
   </nav>
 </div>
 
-<!-- Notification Modal -->
-<div id="notification-modal">
-  <div id="notification-content">
-    <h3>Friend Requests</h3>
-    <div id="notification-list">
-      <!-- Notifications will be here -->
-    </div>
-    <button onclick="closeNotificationModal()" class="mt-4 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded font-semibold">Close</button>
+<!-- Waiting Modal -->
+<div id="modal">
+  <div id="modal-content">
+    <h2 class="text-2xl mb-4">Waiting for other players...</h2>
+    <div class="loader"></div>
+    <p id="players-found" class="mb-4 font-semibold text-lg">Players found: 1/<span id="total-players">2</span></p>
+    <h3 class="mt-2 text-xl font-bold">Current Leaderboard</h3>
+    <div id="modal-leaderboard" class="max-h-48 overflow-y-auto text-left text-sm"></div>
   </div>
 </div>
 
 <script>
   // Firebase config - তোমার credentials বসাও এখানে
   const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_AUTH_DOMAIN",
-    databaseURL: "YOUR_DB_URL",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_STORAGE_BUCKET",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
-  };
+  apiKey: "AIzaSyB-5CakD79CthsI-_vcqblOCN1sXS6U8u8",
+  authDomain: "dot-and-box-90d27.firebaseapp.com",
+  projectId: "dot-and-box-90d27",
+  storageBucket: "dot-and-box-90d27.firebasestorage.app",
+  messagingSenderId: "913945926983",
+  appId: "1:913945926983:web:b4c00c2cffff5b6fa7c062"
+};
   firebase.initializeApp(firebaseConfig);
 
   const auth = firebase.auth();
@@ -288,313 +472,346 @@
   const app = document.getElementById('app');
   const usernameEl = document.getElementById('username');
   const ratingEl = document.getElementById('rating');
+  const modeButtons = [2,3,4].map(n => document.getElementById(`mode-${n}`));
+  const startBtn = document.getElementById('start-btn');
+  const matchLinkEl = document.getElementById('match-link');
+  const statusEl = document.getElementById('status');
+  const gameBoardEl = document.getElementById('game-board');
+  const restartBtn = document.getElementById('restart');
+  const winnerMessageEl = document.getElementById('winner-message');
 
-  const friendSearchInput = document.getElementById('friend-search');
-  const friendsListEl = document.getElementById('friends-list');
+  const leaderboardListEl = document.getElementById('leaderboard-list');
+
+  // Friends Screen elements
+  const searchInput = document.getElementById('search-input');
   const searchResultsEl = document.getElementById('search-results');
+  const friendsListEl = document.getElementById('friends-list');
 
-  const notificationIcon = document.getElementById('notification-icon');
-  const notificationBadge = notificationIcon.querySelector('.badge');
+  // Notification elements
+  const notificationBtn = document.getElementById('notification-btn');
   const notificationModal = document.getElementById('notification-modal');
-  const notificationList = document.getElementById('notification-list');
 
-  // Navigation buttons & screens
-  const screens = ['home','leaderboard','friends','settings'].map(name => document.getElementById(`screen-${name}`));
-  const navButtons = ['nav-home','nav-leaderboard','nav-friends','nav-settings'].map(id => document.getElementById(id));
+  // Screens
+  const screens = {
+    home: document.getElementById('screen-home'),
+    leaderboard: document.getElementById('screen-leaderboard'),
+    friends: document.getElementById('screen-friends'),
+    settings: document.getElementById('screen-settings'),
+  };
 
-  // App state
-  let user = null;
-  let userRating = 1000;
-  let allUsers = []; // all users cached for search
-  let friends = {};  // friends map uid:true
-  let friendRequests = {}; // incoming friend requests {fromUid: true}
+  let currentUser = null;
+  let currentMode = 2;
+  let gameState = null;
+  let matchId = null;
+
+  // User data cache
+  let userData = {};
+
+  // For friends & requests
+  let friends = {};
+  let friendRequests = {};
 
   // Initialize
-  auth.onAuthStateChanged(async (u) => {
-    if(u){
-      user = u;
+
+  auth.onAuthStateChanged(async (user) => {
+    if (user) {
+      currentUser = user;
       authScreen.style.display = 'none';
       app.style.display = 'flex';
-      usernameEl.textContent = u.displayName;
 
-      // Load user rating
-      const userRef = db.ref(`users/${u.uid}`);
-      const snapshot = await userRef.get();
-      if(snapshot.exists()){
-        userRating = snapshot.val().rating || 1000;
-      } else {
-        await userRef.set({displayName: u.displayName, rating: 1000, photoURL: u.photoURL});
-      }
-      ratingEl.textContent = userRating;
+      usernameEl.textContent = user.displayName || user.email;
+      ratingEl.textContent = '0';
 
-      // Load all users once for searching (can be optimized by paging or querying later)
-      loadAllUsers();
-
-      // Load friends and friend requests
-      listenToFriends();
-      listenToFriendRequests();
-
+      await loadUserData();
+      loadFriendsAndRequests();
+      setupNotificationListener();
+      selectMode(currentMode);
       showScreen('home');
     } else {
-      user = null;
+      currentUser = null;
       authScreen.style.display = 'flex';
       app.style.display = 'none';
     }
   });
 
-  function signIn(){
-    auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
-  }
-  function signOut(){
-    auth.signOut();
+  async function loadUserData() {
+    const userRef = db.ref(`users/${currentUser.uid}`);
+    const snapshot = await userRef.once('value');
+    if (!snapshot.exists()) {
+      // Initialize new user data
+      await userRef.set({
+        username: currentUser.displayName || currentUser.email.split('@')[0],
+        rating: 0,
+        photoURL: currentUser.photoURL || '',
+      });
+    }
+    const data = (await userRef.once('value')).val();
+    usernameEl.textContent = data.username;
+    ratingEl.textContent = data.rating || 0;
+    userData[currentUser.uid] = data;
   }
 
-  // Show screen & update nav active
-  function showScreen(name){
-    screens.forEach(s => s.classList.add('hidden'));
-    navButtons.forEach(btn => btn.classList.remove('active'));
-    document.getElementById(`screen-${name}`).classList.remove('hidden');
-    document.getElementById(`nav-${name}`).classList.add('active');
+  // Sign In/Out
+  async function signIn() {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    await auth.signInWithPopup(provider);
+  }
+  async function signOut() {
+    await auth.signOut();
   }
 
-  // Load all users for search
-  async function loadAllUsers(){
-    const snapshot = await db.ref('users').get();
-    allUsers = [];
-    snapshot.forEach(child => {
-      const u = child.val();
-      u.uid = child.key;
-      allUsers.push(u);
+  // Navigation
+  function showScreen(name) {
+    for (const key in screens) {
+      screens[key].classList.toggle('hidden', key !== name);
+    }
+    // Bottom nav active toggle
+    document.querySelectorAll('.bottom-nav button').forEach(btn => {
+      btn.classList.remove('active');
     });
+    const navBtn = document.getElementById(`nav-${name}`);
+    if (navBtn) navBtn.classList.add('active');
+
+    // Clear search input and results when leaving friends screen
+    if (name !== 'friends') {
+      searchInput.value = '';
+      searchResultsEl.innerHTML = '';
+    }
   }
 
-  // Listen to user's friends
-  function listenToFriends(){
-    const friendsRef = db.ref(`friends/${user.uid}`);
+  // Mode selection
+  function selectMode(n) {
+    currentMode = n;
+    modeButtons.forEach(btn => btn.classList.remove('active'));
+    const btn = document.getElementById(`mode-${n}`);
+    if (btn) btn.classList.add('active');
+  }
+
+  // Start a match (stub)
+  function startMatch() {
+    alert(`Starting an online match for ${currentMode} players. (Functionality to be implemented)`);
+  }
+
+  // Restart game (stub)
+  function restartGame() {
+    alert('Restarting game (functionality to be implemented)');
+  }
+
+  // --- Friends Screen Logic ---
+
+  // Load friends & requests
+  async function loadFriendsAndRequests() {
+    if (!currentUser) return;
+
+    // Friends path: users/{uid}/friends/{friendUid}: true
+    const friendsRef = db.ref(`users/${currentUser.uid}/friends`);
     friendsRef.on('value', snapshot => {
-      friends = snapshot.exists() ? snapshot.val() : {};
+      friends = snapshot.val() || {};
       renderFriends();
     });
-  }
 
-  // Render friends list
-  function renderFriends(){
-    friendsListEl.innerHTML = '';
-    const friendUids = Object.keys(friends);
-    if(friendUids.length === 0){
-      friendsListEl.innerHTML = '<p class="text-center text-gray-400">No friends yet. Search and add some!</p>';
-      return;
-    }
-    friendUids.forEach(uid => {
-      const u = allUsers.find(user => user.uid === uid);
-      if(!u) return;
-      const el = createUserItem(u, false);
-      friendsListEl.appendChild(el);
+    // Friend requests: users/{uid}/friendRequests/{requestId}: {fromUid, username, photoURL}
+    const requestsRef = db.ref(`users/${currentUser.uid}/friendRequests`);
+    requestsRef.on('value', snapshot => {
+      friendRequests = snapshot.val() || {};
+      renderNotifications();
     });
   }
 
-  // Create user item element for friend or search result
-  // if isSearchResult=true, add Add Friend button
-  function createUserItem(userObj, isSearchResult){
-    const container = document.createElement('div');
-    container.className = isSearchResult ? 'search-item' : 'friend-item';
+  // Render friend list
+  async function renderFriends() {
+    friendsListEl.innerHTML = '';
+    const friendUids = Object.keys(friends);
 
-    const img = document.createElement('img');
-    img.src = userObj.photoURL || 'https://via.placeholder.com/56?text=User';
-    img.alt = userObj.displayName;
-    img.className = 'friend-photo';
-
-    const info = document.createElement('div');
-    info.className = 'friend-info';
-
-    const name = document.createElement('div');
-    name.className = 'friend-name';
-    name.textContent = userObj.displayName;
-
-    const rating = document.createElement('div');
-    rating.className = 'friend-rating';
-    rating.textContent = `Rating: ${userObj.rating || 1000}`;
-
-    info.appendChild(name);
-    info.appendChild(rating);
-
-    container.appendChild(img);
-    container.appendChild(info);
-
-    if(isSearchResult){
-      const btn = document.createElement('div');
-      btn.className = 'add-friend-btn';
-      const isFriend = !!friends[userObj.uid];
-      const isRequestSent = friendRequests[userObj.uid] === 'sent'; // local flag to track request sent
-      btn.textContent = isFriend ? '✔' : (isRequestSent ? '✕' : '+');
-      if(isFriend){
-        btn.classList.add('added');
-        btn.title = "Already Friend";
-      }
-      if(isRequestSent){
-        btn.classList.add('added');
-        btn.title = "Request Sent. Click to Cancel";
-      }
-      btn.onclick = async () => {
-        if(isFriend) return; // no action on already friend
-
-        if(!isRequestSent){
-          // Send friend request
-          await db.ref(`friendRequests/${userObj.uid}/${user.uid}`).set(true);
-          friendRequests[userObj.uid] = 'sent';
-          btn.textContent = '✕';
-          btn.classList.add('added');
-          btn.title = "Request Sent. Click to Cancel";
-        } else {
-          // Cancel friend request
-          await db.ref(`friendRequests/${userObj.uid}/${user.uid}`).remove();
-          delete friendRequests[userObj.uid];
-          btn.textContent = '+';
-          btn.classList.remove('added');
-          btn.title = "Add Friend";
-        }
-      };
-      container.appendChild(btn);
-    }
-
-    return container;
-  }
-
-  // Search friends by username input
-  friendSearchInput.addEventListener('input', () => {
-    const query = friendSearchInput.value.trim().toLowerCase();
-    searchResultsEl.innerHTML = '';
-    if(query.length === 0){
+    if (friendUids.length === 0) {
+      friendsListEl.innerHTML = '<p class="text-center text-gray-400">No friends added yet.</p>';
       return;
     }
-    // Filter users by name fuzzy matching
-    const results = allUsers.filter(u => {
-      return u.displayName.toLowerCase().includes(query) && u.uid !== user.uid && !friends[u.uid];
-    }).slice(0, 10); // limit results
 
-    if(results.length === 0){
+    for (const friendUid of friendUids) {
+      let friendInfo = userData[friendUid];
+      if (!friendInfo) {
+        // Fetch user info
+        const snapshot = await db.ref(`users/${friendUid}`).once('value');
+        friendInfo = snapshot.val();
+        if (friendInfo) userData[friendUid] = friendInfo;
+      }
+      if (!friendInfo) continue; // skip if no info
+
+      const el = document.createElement('div');
+      el.className = 'friend-item';
+      el.innerHTML = `
+        <img src="${friendInfo.photoURL || 'https://via.placeholder.com/56?text=U'}" alt="avatar" class="friend-avatar" />
+        <div class="friend-info">
+          <div class="friend-username">${friendInfo.username}</div>
+          <div class="friend-rating">Rating: ${friendInfo.rating || 0}</div>
+        </div>
+      `;
+      friendsListEl.appendChild(el);
+    }
+  }
+
+  // Search users by username (simple startsWith, case insensitive)
+  let searchTimeout = null;
+  searchInput.addEventListener('input', () => {
+    clearTimeout(searchTimeout);
+    const val = searchInput.value.trim().toLowerCase();
+    if (val === '') {
+      searchResultsEl.innerHTML = '';
+      return;
+    }
+    searchTimeout = setTimeout(() => {
+      searchUsers(val);
+    }, 300);
+  });
+
+  async function searchUsers(query) {
+    // Clear previous
+    searchResultsEl.innerHTML = '<p class="text-center text-gray-400">Searching...</p>';
+
+    // Firebase Realtime DB does not have great text search;
+    // so we get all users and filter client-side for demo (not scalable)
+
+    const snapshot = await db.ref('users').once('value');
+    const allUsers = snapshot.val() || {};
+
+    // Filter by username startWith query, exclude self and existing friends
+    const results = [];
+    for (const uid in allUsers) {
+      if (uid === currentUser.uid) continue;
+      const user = allUsers[uid];
+      if (!user.username) continue;
+      if (user.username.toLowerCase().startsWith(query)) {
+        if (!friends[uid]) { // exclude existing friends
+          results.push({ uid, ...user });
+        }
+      }
+    }
+
+    if (results.length === 0) {
       searchResultsEl.innerHTML = '<p class="text-center text-gray-400">No users found.</p>';
       return;
     }
 
-    results.forEach(u => {
-      const el = createUserItem(u, true);
-      searchResultsEl.appendChild(el);
-    });
-  });
-
-  // Listen to incoming friend requests
-  function listenToFriendRequests(){
-    const reqRef = db.ref(`friendRequests/${user.uid}`);
-    reqRef.on('value', async snapshot => {
-      friendRequests = {};
-      if(snapshot.exists()){
-        snapshot.forEach(child => {
-          friendRequests[child.key] = true;
-        });
-      }
-      updateNotificationUI();
-    });
-  }
-
-  // Update notification icon badge
-  // Update notification icon badge
-  function updateNotificationUI(){
-    const count = Object.keys(friendRequests).length;
-    if(count > 0){
-      notificationBadge.style.display = 'inline-block';
-      notificationBadge.textContent = count;
-    } else {
-      notificationBadge.style.display = 'none';
+    // Render search results
+    searchResultsEl.innerHTML = '';
+    for (const user of results) {
+      const div = document.createElement('div');
+      div.className = 'search-result-item';
+      div.innerHTML = `
+        <img src="${user.photoURL || 'https://via.placeholder.com/56?text=U'}" alt="avatar" class="search-avatar" />
+        <div class="search-info">
+          <div class="search-username">${user.username}</div>
+          <div class="search-rating">Rating: ${user.rating || 0}</div>
+        </div>
+        <button class="add-friend-btn" data-uid="${user.uid}" title="Add Friend">+</button>
+      `;
+      const btn = div.querySelector('.add-friend-btn');
+      btn.addEventListener('click', () => {
+        sendFriendRequest(user.uid, user.username, user.photoURL);
+        btn.classList.add('added');
+        btn.textContent = 'X';
+        btn.title = 'Cancel Request';
+        btn.onclick = () => {
+          cancelFriendRequest(user.uid, btn);
+        };
+      });
+      searchResultsEl.appendChild(div);
     }
   }
 
-  // Show notification modal with friend requests
-  notificationIcon.addEventListener('click', () => {
-    renderNotificationList();
-    notificationModal.classList.add('active');
-  });
-
-  // Close notification modal
-  function closeNotificationModal(){
-    notificationModal.classList.remove('active');
+  // Send friend request
+  async function sendFriendRequest(friendUid, friendUsername, friendPhotoURL) {
+    if (!currentUser) return;
+    const requestRef = db.ref(`users/${friendUid}/friendRequests/${currentUser.uid}`);
+    await requestRef.set({
+      fromUid: currentUser.uid,
+      username: userData[currentUser.uid]?.username || currentUser.displayName || 'Unknown',
+      photoURL: userData[currentUser.uid]?.photoURL || currentUser.photoURL || '',
+      timestamp: Date.now()
+    });
   }
 
-  // Render friend requests inside notification modal
-  function renderNotificationList(){
-    notificationList.innerHTML = '';
+  // Cancel friend request
+  async function cancelFriendRequest(friendUid, btn) {
+    if (!currentUser) return;
+    const requestRef = db.ref(`users/${friendUid}/friendRequests/${currentUser.uid}`);
+    await requestRef.remove();
+    btn.classList.remove('added');
+    btn.textContent = '+';
+    btn.title = 'Add Friend';
+    btn.onclick = () => {
+      sendFriendRequest(friendUid);
+      btn.classList.add('added');
+      btn.textContent = 'X';
+      btn.title = 'Cancel Request';
+      btn.onclick = () => cancelFriendRequest(friendUid, btn);
+    };
+  }
 
-    const reqUids = Object.keys(friendRequests);
-    if(reqUids.length === 0){
-      notificationList.innerHTML = '<p class="text-center text-gray-400">No friend requests.</p>';
+  // Notifications: show friend requests received
+  function renderNotifications() {
+    notificationModal.innerHTML = '';
+    const keys = Object.keys(friendRequests);
+    if (keys.length === 0) {
+      notificationModal.innerHTML = '<p class="text-center text-gray-400">No friend requests.</p>';
       return;
     }
+    keys.forEach(uid => {
+      const req = friendRequests[uid];
+      const div = document.createElement('div');
+      div.className = 'notification-item';
+      div.innerHTML = `
+        <div class="notification-text">${req.username} sent you a friend request</div>
+        <button class="notification-btn decline" title="Decline">✗</button>
+        <button class="notification-btn accept" title="Accept">✓</button>
+      `;
+      const declineBtn = div.querySelector('.decline');
+      const acceptBtn = div.querySelector('.accept');
 
-    reqUids.forEach(async (fromUid) => {
-      // Get sender info from allUsers cache or load from DB if missing
-      let sender = allUsers.find(u => u.uid === fromUid);
-      if(!sender){
-        // fallback: load sender data from DB
-        const snap = await db.ref(`users/${fromUid}`).get();
-        if(snap.exists()){
-          sender = snap.val();
-          sender.uid = fromUid;
-          allUsers.push(sender); // cache it for later
-        }
-      }
-      if(!sender) return;
+      declineBtn.onclick = async () => {
+        await db.ref(`users/${currentUser.uid}/friendRequests/${uid}`).remove();
+      };
 
-      const item = document.createElement('div');
-      item.className = 'notification-item';
+      acceptBtn.onclick = async () => {
+        // Add each other as friends
+        const updates = {};
+        updates[`users/${currentUser.uid}/friends/${uid}`] = true;
+        updates[`users/${uid}/friends/${currentUser.uid}`] = true;
+        updates[`users/${currentUser.uid}/friendRequests/${uid}`] = null;
+        await db.ref().update(updates);
+      };
 
-      const textDiv = document.createElement('div');
-      textDiv.className = 'notification-text';
-      textDiv.textContent = `${sender.displayName} sent you a friend request.`;
-
-      const buttonsDiv = document.createElement('div');
-      buttonsDiv.className = 'notification-buttons';
-
-      const acceptBtn = document.createElement('div');
-      acceptBtn.className = 'notif-btn accept';
-      acceptBtn.title = 'Accept Friend Request';
-      acceptBtn.textContent = '✔';
-      acceptBtn.onclick = () => respondToFriendRequest(fromUid, true);
-
-      const declineBtn = document.createElement('div');
-      declineBtn.className = 'notif-btn decline';
-      declineBtn.title = 'Decline Friend Request';
-      declineBtn.textContent = '✕';
-      declineBtn.onclick = () => respondToFriendRequest(fromUid, false);
-
-      buttonsDiv.appendChild(acceptBtn);
-      buttonsDiv.appendChild(declineBtn);
-
-      item.appendChild(textDiv);
-      item.appendChild(buttonsDiv);
-
-      notificationList.appendChild(item);
+      notificationModal.appendChild(div);
     });
   }
 
-  // Accept or Decline friend request
-  async function respondToFriendRequest(fromUid, accept){
-    if(accept){
-      // Add each other as friends
-      const updates = {};
-      updates[`friends/${user.uid}/${fromUid}`] = true;
-      updates[`friends/${fromUid}/${user.uid}`] = true;
-      // Remove the friend request
-      updates[`friendRequests/${user.uid}/${fromUid}`] = null;
+  // Toggle notification modal visibility
+  notificationBtn.addEventListener('click', () => {
+    notificationModal.classList.toggle('active');
+  });
 
-      await db.ref().update(updates);
-
-    } else {
-      // Just remove friend request
-      await db.ref(`friendRequests/${user.uid}/${fromUid}`).remove();
+  // Close notification modal if clicking outside
+  window.addEventListener('click', (e) => {
+    if (!notificationModal.contains(e.target) && e.target !== notificationBtn) {
+      notificationModal.classList.remove('active');
     }
+  });
+
+  // Listen for new notifications and update notification icon (optional: badge)
+  function setupNotificationListener() {
+    // Optionally, can add badge count on notification icon for pending requests
+    const notifRef = db.ref(`users/${currentUser.uid}/friendRequests`);
+    notifRef.on('value', snapshot => {
+      const val = snapshot.val();
+      if (val && Object.keys(val).length > 0) {
+        notificationBtn.textContent = '🔔•'; // with badge dot
+      } else {
+        notificationBtn.textContent = '🔔';
+      }
+    });
   }
 
 </script>
-
 </body>
-  </html>
+</html>
