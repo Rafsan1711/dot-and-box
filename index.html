@@ -8,7 +8,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
   <style>
     body { font-family: Arial, sans-serif; background:#121212; color:#fff; margin:0; display:flex; flex-direction:column; min-height:100vh; }
     .hidden { display:none!important; }
@@ -17,61 +16,66 @@
     .line { background:#444; cursor:pointer; transition: background 0.2s; }
     .line.horizontal { height:6px; width:60px; }
     .line.vertical { height:60px; width:6px; }
-    .line.active { opacity:0.8; }
     .box { width:60px; height:60px; background:#2a2a2a; display:flex; align-items:center; justify-content:center; font-size:1.2em; font-weight:bold; }
     .avatar { width:24px; height:24px; border-radius:50%; display:inline-block; margin-right:8px; vertical-align:middle; }
   </style>
 </head>
-<body>
+<body class="flex flex-col">
+  <!-- Auth Screen -->
   <div id="auth-screen" class="flex-grow flex items-center justify-center flex-col">
     <h1 class="text-4xl mb-4">Dot & Box Online</h1>
     <button onclick="signIn()" class="bg-blue-500 px-6 py-3 rounded">Sign in with Google</button>
   </div>
+
+  <!-- Main App -->
   <div id="app" class="hidden flex-grow flex flex-col">
     <div class="p-4 flex justify-between items-center bg-gray-800">
-      <div id="user-info"><span id="username" class="font-semibold"></span> <span id="rating" class="text-gray-400"></span></div>
-      <div id="mode-buttons" class="space-x-2">
-        <button onclick="selectMode(2)" id="btn2" class="bg-green-500 px-3 py-1 rounded">2 Players</button>
-        <button onclick="selectMode(4)" id="btn4" class="bg-purple-500 px-3 py-1 rounded">4 Players</button>
-      </div>
+      <div><span id="username" class="font-semibold"></span> <span class="text-gray-400 ml-2">Rating: <span id="rating">0</span></span></div>
       <div id="match-link" class="text-sm text-blue-400"></div>
     </div>
+
     <div id="screens" class="flex-grow p-4 overflow-auto">
       <div id="screen-home" class="space-y-4">
-        <button onclick="startMatch()" class="w-full bg-green-600 px-4 py-2 rounded">Play Online</button>
-        <div id="modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center hidden">
-          <div class="bg-gray-700 p-6 rounded text-center">
-            <p>Waiting for players...</p>
+        <button onclick="startMatching()" class="w-full bg-green-500 px-4 py-2 rounded">Play Online</button>
+        <div id="modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center hidden z-50">
+          <div class="bg-gray-800 p-6 rounded shadow-lg text-center">
+            <p class="mb-4">Waiting for players...</p>
             <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-white mx-auto"></div>
           </div>
         </div>
       </div>
+
       <div id="screen-game" class="hidden">
         <div id="top-player-list" class="flex justify-center space-x-8 mb-4"></div>
         <div id="status" class="text-xl font-bold mb-2 text-center"></div>
         <div id="game-board"></div>
         <div id="bottom-player-list" class="flex justify-center space-x-8 mt-4"></div>
       </div>
+
       <div id="screen-leaderboard" class="hidden">
         <h2 class="text-2xl mb-4">Leaderboard</h2>
-        <div id="leaderboard" class="space-y-2 overflow-auto max-h-96"></div>
+        <div id="leaderboard" class="space-y-2 max-h-96 overflow-auto"></div>
       </div>
+
       <div id="screen-settings" class="hidden">
         <h2 class="text-2xl mb-4">Settings</h2>
         <button onclick="signOut()" class="bg-red-500 px-4 py-2 rounded">Sign Out</button>
       </div>
     </div>
+
     <div class="bg-gray-800 flex justify-around p-2">
-      <button onclick="show('home')">🏠 Home</button>
-      <button onclick="show('leaderboard')">⭐ Leaderboard</button>
-      <button onclick="show('settings')">⚙️ Settings</button>
+      <button onclick="showScreen('home')">🏠 Home</button>
+      <button onclick="showScreen('leaderboard')">⭐ Leaderboard</button>
+      <button onclick="showScreen('settings')">⚙️ Settings</button>
     </div>
   </div>
+
 <script>
-  // Initialize Firebase
+  // Firebase config
   const firebaseConfig = {
     apiKey: 'AIzaSyCKfr-jvUKonc2TcEDcejk562kOm8LTAa0',
     authDomain: 'dot-and-box-online.firebaseapp.com',
+    databaseURL: 'https://dot-and-box-online.firebaseio.com',
     projectId: 'dot-and-box-online',
     storageBucket: 'dot-and-box-online.appspot.com',
     messagingSenderId: '334340725862',
@@ -80,11 +84,10 @@
   firebase.initializeApp(firebaseConfig);
   const auth = firebase.auth(), db = firebase.database();
 
-  // Game state
-  let user, mode = 2, code, players = [], turn = 0, boardSize = 5, lines = new Set(), scores = {};
-  document.addEventListener('DOMContentLoaded', () => selectMode(2)); // default selection
+  // State
+  let user, gameId, mode = 4, players = [], turn = 0, boardSize = 5, lines = new Set(), scores = {};
 
-  // Auth handlers
+  // Auth
   auth.onAuthStateChanged(async u => {
     if (u) {
       user = u;
@@ -93,181 +96,141 @@
       document.getElementById('username').textContent = u.displayName;
       const ref = db.ref('users/' + u.uid);
       const snap = await ref.get();
-      let r = snap.child('rating').exists() ? snap.child('rating').val() : 1000;
-      await ref.update({ rating: r, displayName: u.displayName });
-      document.getElementById('rating').textContent = 'Rating: ' + r;
-      loadLeader();
-      show('home');
+      let rating = snap.child('rating').exists() ? snap.child('rating').val() : 1000;
+      await ref.update({ rating, displayName: u.displayName });
+      document.getElementById('rating').textContent = rating;
+      loadLeaderboard();
+      showScreen('home');
+      const existing = new URLSearchParams(window.location.search).get('match');
+      if (existing) {
+        document.getElementById('match-link').textContent = 'Match: ' + existing;
+        startMatching(existing);
+      }
     }
   });
   function signIn() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
   function signOut() { auth.signOut(); location.reload(); }
 
-  // UI helpers
-  function selectMode(m) {
-    mode = m;
-    ['btn2','btn4'].forEach(id => document.getElementById(id).classList.remove('ring'));
-    document.getElementById(m===2 ? 'btn2' : 'btn4').classList.add('ring','ring-white');
-  }
-  function show(view) {
+  function showScreen(screen) {
     ['home','game','leaderboard','settings'].forEach(s => document.getElementById('screen-'+s).classList.add('hidden'));
-    document.getElementById('screen-'+view).classList.remove('hidden');
+    document.getElementById('screen-'+screen).classList.remove('hidden');
   }
 
-  // Leaderboard
-  async function loadLeader() {
+  async function loadLeaderboard() {
     const snap = await db.ref('users').orderByChild('rating').limitToLast(20).get();
     const list = [];
-    snap.forEach(c => list.push({ n: c.val().displayName, r: c.val().rating }));
-    list.sort((a,b) => b.r - a.r);
-    const ctn = document.getElementById('leaderboard'); ctn.innerHTML = '';
+    snap.forEach(c => list.push({ name: c.val().displayName, rating: c.val().rating }));
+    list.sort((a,b) => b.rating - a.rating);
+    const ct = document.getElementById('leaderboard'); ct.innerHTML = '';
     list.forEach((u,i) => {
-      const bg = i<3 ? ['bg-yellow-500','bg-gray-300 text-black','bg-yellow-700'][i] : 'bg-gray-700';
-      const row = document.createElement('div');
-      row.className = `flex justify-between p-2 rounded ${bg}`;
-      row.innerHTML = `<span>#${i+1}</span><span>${u.n}</span><span>${u.r}</span>`;
-      ctn.appendChild(row);
+      const div = document.createElement('div');
+      const bg = i < 3 ? ['bg-yellow-500','bg-gray-300 text-black','bg-yellow-700'][i] : 'bg-gray-700';
+      div.className = `flex justify-between p-2 rounded ${bg}`;
+      div.innerHTML = `<span>#${i+1}</span><span>${u.name}</span><span>${u.rating}</span>`;
+      ct.appendChild(div);
     });
   }
 
-  // Matchmaking
-  function startMatch() {
-    code = new URLSearchParams(location.search).get('match') || Math.floor(1e7 + Math.random()*9e7).toString();
-    history.replaceState(null,'','?match='+code);
-    document.getElementById('match-link').textContent = 'Code: ' + code;
+  // Matching for 2-4 players
+  async function startMatching(code) {
+    gameId = code || new URLSearchParams(window.location.search).get('match') || Math.floor(1e7+Math.random()*9e7).toString();
+    history.replaceState(null,'','?match='+gameId);
+    document.getElementById('match-link').textContent = 'Match: '+gameId;
     document.getElementById('modal').classList.remove('hidden');
-    const slotRef = db.ref('slots/'+code);
-    slotRef.get().then(async snap => {
-      const v = snap.val() || {};
-      const keys = ['p1','p2','p3','p4'];
-      for (let i=0; i<mode; i++) {
-        if (!v[keys[i]]) { await slotRef.update({ [keys[i]]: user.uid }); break; }
+    const slotRef = db.ref('slots/'+gameId);
+    const snap = await slotRef.get();
+    if (!snap.exists()) {
+      await slotRef.set({ p1:user.uid });
+    }
+    slotRef.get().then(async s2 => {
+      const v = s2.val();
+      for (let i=1;i<=mode;i++){
+        const key='p'+i;
+        if (!v[key]) { await slotRef.update({ [key]:user.uid }); break; }
       }
-      waitForPlayers(slotRef);
     });
-  }
-  function waitForPlayers(slotRef) {
-    slotRef.on('value', snap => {
-      const v = snap.val() || {};
-      const joined = ['p1','p2','p3','p4'].filter(k=>v[k]).length;
-      if (joined === mode) {
-        slotRef.off();
-        slotRef.remove();
-        beginGame();
+    slotRef.on('value', snapv => {
+      const v = snapv.val()||{};
+      players = ['p1','p2','p3','p4'].filter(k=>v[k]).map(k=>v[k]);
+      if (players.length===mode) {
+        slotRef.off(); slotRef.remove(); initGame();
       }
     });
   }
 
-  // Start game
-  async function beginGame() {
+  function initGame(){
     document.getElementById('modal').classList.add('hidden');
-    const snap = await db.ref('slots/'+code).get();
-    const v = snap.val() || {};
-    players = ['p1','p2','p3','p4']
-      .filter(k => v[k])
-      .map(k => v[k]);
-    turn = 0; lines.clear(); scores = {};
-    players.forEach(p => scores[p] = 0);
-    renderPlayerLists(); show('game'); renderBoard(); updateStatus();
+    scores = {}; players.forEach(p=>scores[p]=0);
+    renderPlayerLists(); showScreen('game'); renderBoard(); updateStatus();
   }
 
-  // Render player names/avatars
-  function renderPlayerLists() {
-    const top = document.getElementById('top-player-list');
-    const bot = document.getElementById('bottom-player-list');
-    top.innerHTML = bot.innerHTML = '';
-    const colors = ['#4a90e2','#e94e77','#f5a623','#7ed321'];
-    if (mode === 2) {
-      players.forEach((uid,i) => {
-        const div = document.createElement('div');
-        const label = uid === user.uid ? 'You' : 'Opponent';
-        div.innerHTML = `<span class=\"avatar\" style=\"background:${colors[i]}\"></span>${label}`;
+  function renderPlayerLists(){
+    const top=document.getElementById('top-player-list'), bot=document.getElementById('bottom-player-list');
+    top.innerHTML=bot.innerHTML='';
+    const colors=['#4a90e2','#e94e77','#f5a623','#7ed321'];
+    if(players.length===2){
+      players.forEach((u,i)=>{
+        const div=document.createElement('div');
+        div.innerHTML=`<span class=\"avatar\" style=\"background:${colors[i]}\"></span>${u===user.uid?'You':'Opponent'}`;
         bot.appendChild(div);
       });
     } else {
-      players.forEach((uid,i) => {
-        const container = i < 2 ? top : bot;
-        const div = document.createElement('div');
-        const label = uid === user.uid ? 'You' : 'Player '+(i+1);
-        div.innerHTML = `<span class=\"avatar\" style=\"background:${colors[i]}\"></span>${label}`;
+      players.forEach((u,i)=>{
+        const container=i<2?top:bot;
+        const div=document.createElement('div');
+        div.innerHTML=`<span class=\"avatar\" style=\"background:${colors[i]}\"></span>${u===user.uid?'You':'Player '+(i+1)}`;
         container.appendChild(div);
       });
     }
   }
 
-  // Board rendering and game logic
-  function renderBoard() {
-    const gb = document.getElementById('game-board');
-    gb.innerHTML = '';
-    const size = boardSize*2 - 1;
-    gb.style.gridTemplateColumns = `repeat(${size}, auto)`;
-    for (let r = 0; r < size; r++) {
-      for (let c = 0; c < size; c++) {
-        if (r%2===0 && c%2===0) {
-          const dot = document.createElement('div'); dot.className='dot'; gb.appendChild(dot);
-        } else if (r%2===0 || c%2===0) {
-          const line = document.createElement('div');
-          line.className = 'line ' + (r%2===0 ? 'horizontal' : 'vertical');
-          line.dataset.key = `${r}-${c}`;
-          line.onclick = () => selectLine(r,c);
-          gb.appendChild(line);
-        } else {
-          const box = document.createElement('div');
-          box.className = 'box';
-          box.dataset.key = `${r}-${c}`;
-          gb.appendChild(box);
-        }
+  function renderBoard(){
+    const gb=document.getElementById('game-board'); gb.innerHTML='';
+    const size=boardSize*2-1; gb.style.gridTemplateColumns=`repeat(${size},auto)`;
+    for(let r=0;r<size;r++){ for(let c=0;c<size;c++){
+      if(r%2===0&&c%2===0){ gb.appendChild(Object.assign(document.createElement('div'),{className:'dot'})); }
+      else if(r%2===0||c%2===0){
+        const ln=document.createElement('div'); ln.className='line '+(r%2===0?'horizontal':'vertical');
+        ln.dataset.key=`${r}-${c}`; ln.onclick=()=>selectLine(r,c);
+        gb.appendChild(ln);
+      } else {
+        const bx=document.createElement('div'); bx.className='box'; bx.dataset.key=`${r}-${c}`;
+        gb.appendChild(bx);
       }
-    }
+    }}
   }
 
-  function selectLine(r,c) {
-    const key = `${r}-${c}`;
-    if (lines.has(key)) return;
-    lines.add(key);
-    const el = document.querySelector(`.line[data-key=\"${key}\"]`);
-    el.classList.add('active');
-    el.style.backgroundColor = ['#4a90e2','#e94e77','#f5a623','#7ed321'][turn];
-    if (!checkBoxes(r,c)) turn = (turn+1) % players.length;
-    else if (isOver()) return endGame();
+  function selectLine(r,c){
+    const key=`${r}-${c}`; if(lines.has(key))return; lines.add(key);
+    const el=document.querySelector(`.line[data-key=\\"${key}\\"]`);
+    el.style.background=['#4a90e2','#e94e77','#f5a623','#7ed321'][turn];
+    if(!checkBoxes(r,c)) turn=(turn+1)%players.length;
+    else if(isOver()) return endGame();
     updateStatus();
   }
 
-  function checkBoxes(r,c) {
-    let claimed = false;
-    [[0,1],[0,-1],[1,0],[-1,0]].forEach(([dr,dc]) => {
-      const rr = r+dr, cc = c+dc;
-      if (rr%2 && cc%2) {
-        const corners = [[rr-1,cc-1],[rr-1,cc+1],[rr+1,cc-1],[rr+1,cc+1]];
-        if (corners.every(([ar,ac]) => lines.has(`${ar}-${ac}`))) {
-          const box = document.querySelector(`.box[data-key=\"${rr}-${cc}\"]`);
-          if (!box.classList.length) {
-            box.classList.add(`player-${turn+1}`);
-            box.textContent = turn+1;
-            scores[players[turn]]++;
-            claimed = true;
-          }
+  function checkBoxes(r,c){ let claimed=false;
+    [[0,1],[0,-1],[1,0],[-1,0]].forEach(([dr,dc])=>{
+      const rr=r+dr,cc=c+dc;
+      if(rr%2&&cc%2){ const corners=[[rr-1,cc-1],[rr-1,cc+1],[rr+1,cc-1],[rr+1,cc+1]];
+        if(corners.every(([ar,ac])=>lines.has(`${ar}-${ac}`)&&lines.has(`${rr}-${ac}`))){
+          const box=document.querySelector(`.box[data-key=\\"${rr}-${cc}\\"]`);
+          if(!box.textContent){ box.textContent=turn+1; scores[players[turn]]++; claimed=true; }
         }
       }
-    });
-    return claimed;
+    }); return claimed;
   }
 
-  function updateStatus() {
-    const statusEl = document.getElementById('status');
-    statusEl.textContent = `Player ${turn+1}'s turn`;
-    statusEl.style.color = ['#4a90e2','#e94e77','#f5a623','#7ed321'][turn];
+  function updateStatus(){
+    const st=document.getElementById('status'); st.textContent=`Player ${turn+1}'s turn`;
+    st.style.color=['#4a90e2','#e94e77','#f5a623','#7ed321'][turn];
   }
 
-  function isOver() {
-    return Object.values(scores).reduce((a,b) => a+b,0) === (boardSize-1)*(boardSize-1);
-  }
-
-  function endGame() {
-    const statusEl = document.getElementById('status');
-    statusEl.textContent = 'Game Over';
-    const winner = Object.entries(scores).sort((a,b) => b[1]-a[1])[0][0];
-    statusEl.textContent = `Winner: ${winner===user.uid ? 'You' : 'Player '+(players.indexOf(winner)+1)}`;
+  function isOver(){ return Object.values(scores).reduce((a,b)=>a+b,0)===(boardSize-1)**2; }
+  function endGame(){
+    const st=document.getElementById('status'); st.textContent='Game Over';
+    const win=Object.entries(scores).sort((a,b)=>b[1]-a[1])[0][0];
+    st.textContent=`Winner: ${win===user.uid?'You':'Player '+(players.indexOf(win)+1)}`;
   }
 </script>
 </body>
