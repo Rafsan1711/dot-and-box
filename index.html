@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,15 +10,16 @@
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
   <style>
-    body {font-family: Arial,sans-serif; background:#121212; color:#fff; margin:0; display:flex; flex-direction:column; min-height:100vh;}
-    .hidden {display:none!important;}
-    #game-board {display:grid; gap:5px; margin:20px auto;}
-    .dot{width:12px;height:12px; background:#fff;border-radius:50%;}
-    .line{background:#444;cursor:pointer;transition: background 0.2s;}
-    .line.horizontal{height:6px;width:60px;}
-    .line.vertical{height:60px;width:6px;}
-    .box{width:60px;height:60px;background:#2a2a2a;display:flex;align-items:center;justify-content:center;font-size:1.2em;font-weight:bold;}
-    .avatar {width:24px;height:24px;border-radius:50%;display:inline-block;margin-right:8px;vertical-align:middle;}
+    body { font-family: Arial, sans-serif; background:#121212; color:#fff; margin:0; display:flex; flex-direction:column; min-height:100vh; }
+    .hidden { display:none!important; }
+    #game-board { display:grid; gap:5px; margin:20px auto; }
+    .dot { width:12px; height:12px; background:#fff; border-radius:50%; }
+    .line { background:#444; cursor:pointer; transition: background 0.2s; }
+    .line.horizontal { height:6px; width:60px; }
+    .line.vertical { height:60px; width:6px; }
+    .line.active { opacity:0.8; }
+    .box { width:60px; height:60px; background:#2a2a2a; display:flex; align-items:center; justify-content:center; font-size:1.2em; font-weight:bold; }
+    .avatar { width:24px; height:24px; border-radius:50%; display:inline-block; margin-right:8px; vertical-align:middle; }
   </style>
 </head>
 <body>
@@ -38,13 +40,17 @@
       <div id="screen-home" class="space-y-4">
         <button onclick="startMatch()" class="w-full bg-green-600 px-4 py-2 rounded">Play Online</button>
         <div id="modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center hidden">
-          <div class="bg-gray-700 p-6 rounded text-center"><p>Waiting for players...</p><div class="animate-spin rounded-full h-8 w-8 border-t-2 border-white mx-auto"></div></div>
+          <div class="bg-gray-700 p-6 rounded text-center">
+            <p>Waiting for players...</p>
+            <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-white mx-auto"></div>
+          </div>
         </div>
       </div>
       <div id="screen-game" class="hidden">
-        <div id="player-list" class="flex justify-center space-x-8 mb-4"></div>
+        <div id="top-player-list" class="flex justify-center space-x-8 mb-4"></div>
         <div id="status" class="text-xl font-bold mb-2 text-center"></div>
         <div id="game-board"></div>
+        <div id="bottom-player-list" class="flex justify-center space-x-8 mt-4"></div>
       </div>
       <div id="screen-leaderboard" class="hidden">
         <h2 class="text-2xl mb-4">Leaderboard</h2>
@@ -62,27 +68,207 @@
     </div>
   </div>
 <script>
-  const firebaseConfig={apiKey:'AIzaSyCKfr-jvUKonc2TcEDcejk562kOm8LTAa0',authDomain:'dot-and-box-online.firebaseapp.com',projectId:'dot-and-box-online',storageBucket:'dot-and-box-online.appspot.com',messagingSenderId:'334340725862',appId:'1:334340725862:web:356b78d59e76ff6f5861a7'};
+  // Initialize Firebase
+  const firebaseConfig = {
+    apiKey: 'AIzaSyCKfr-jvUKonc2TcEDcejk562kOm8LTAa0',
+    authDomain: 'dot-and-box-online.firebaseapp.com',
+    projectId: 'dot-and-box-online',
+    storageBucket: 'dot-and-box-online.appspot.com',
+    messagingSenderId: '334340725862',
+    appId: '1:334340725862:web:356b78d59e76ff6f5861a7'
+  };
   firebase.initializeApp(firebaseConfig);
-  const auth=firebase.auth(), db=firebase.database();
-  let user, mode=2, code, players=[], turn=0, boardSize=5, lines=new Set(), scores={};
-  auth.onAuthStateChanged(async u=>{if(u){user=u;document.getElementById('auth-screen').classList.add('hidden');document.getElementById('app').classList.remove('hidden');document.getElementById('username').textContent=u.displayName;const ref=db.ref('users/'+u.uid),snap=await ref.get();let r=snap.child('rating').exists()?snap.child('rating').val():1000;await ref.update({rating:r,displayName:u.displayName});document.getElementById('rating').textContent='Rating: '+r;loadLeader();show('home');}});
-  function signIn(){auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());}
-  function signOut(){auth.signOut();location.reload();}
-  function selectMode(m){mode=m;['btn2','btn4'].forEach(id=>document.getElementById(id).classList.remove('ring'));document.getElementById(m===2?'btn2':'btn4').classList.add('ring','ring-white');}
-  function show(s){['home','game','leaderboard','settings'].forEach(x=>document.getElementById('screen-'+x).classList.add('hidden'));document.getElementById('screen-'+s).classList.remove('hidden');}
-  async function loadLeader(){const snap=await db.ref('users').orderByChild('rating').limitToLast(20).get(),list=[];snap.forEach(c=>list.push({n:c.val().displayName,r:c.val().rating}));list.sort((a,b)=>b.r-a.r);const ctn=document.getElementById('leaderboard');ctn.innerHTML='';list.forEach((u,i)=>{const bg=i<3?['bg-yellow-500','bg-gray-300 text-black','bg-yellow-700'][i]:'bg-gray-700';const d=document.createElement('div');d.className=`flex justify-between p-2 rounded ${bg}`;d.innerHTML=`<span>#${i+1}</span><span>${u.n}</span><span>${u.r}</span>`;ctn.appendChild(d);});}
-  function startMatch(){const urlCode=new URLSearchParams(location.search).get('match');code=urlCode||Math.floor(1e7+Math.random()*9e7).toString();history.replaceState(null,'','?match='+code);document.getElementById('match-link').textContent='Code: '+code;document.getElementById('modal').classList.remove('hidden');const slot=db.ref('slots/'+code);slot.get().then(async snap=>{const d=snap.val()||{};if(!d.p1){await slot.update({p1:user.uid});waitForPlayers(slot);}else if(!d.p2&&mode>=2){await slot.update({p2:user.uid});if(mode===2)beginGame();else waitForPlayers(slot);}else if(mode===4&&!d.p3){await slot.update({p3:user.uid});waitForPlayers(slot);}else if(mode===4&&!d.p4){await slot.update({p4:user.uid});beginGame();}});}
-  function waitForPlayers(slot){slot.on('value',snap=>{const v=snap.val(),arr=['p1','p2','p3','p4'].filter(k=>v[k]).map(k=>v[k]);if((mode===2&&arr.length===2)||(mode===4&&arr.length===4)){slot.off();slot.remove();beginGame();}});}  
-  async function beginGame(){document.getElementById('modal').classList.add('hidden');players=await getSlotPlayers();turn=0;lines.clear();scores={};players.forEach(p=>scores[p]=0);renderPlayerList();show('game');renderBoard();updateStatus();}
-  async function getSlotPlayers(){const snap=await db.ref('slots/'+code).get(),v=snap.val()||{};return ['p1','p2','p3','p4'].filter(k=>v[k]).map(k=>v[k]);}
-  function renderPlayerList(){const container=document.getElementById('player-list');container.innerHTML='';players.forEach((uid,i)=>{const div=document.createElement('div');const color=['#4a90e2','#e94e77','#f5a623','#7ed321'][i];div.innerHTML=`<span class="avatar" style="background:${color};"></span>${uid===user.uid?'You':'Player '+(i+1)}`;container.appendChild(div);});}
-  function renderBoard(){const gb=document.getElementById('game-board');gb.innerHTML='';const size=boardSize*2-1;gb.style.gridTemplateColumns=Array(size).fill('auto').join(' ');for(let r=0;r<size;r++)for(let c=0;c<size;c++){if(r%2===0&&c%2===0){gb.appendChild(Object.assign(document.createElement('div'),{className:'dot'}));}else if(r%2===0||c%2===0){const d=document.createElement('div');d.className='line '+(r%2===0?'horizontal':'vertical');d.dataset.key=`${r}-${c}`;d.onclick=()=>selectLine(r,c);gb.appendChild(d);}else{gb.appendChild(Object.assign(document.createElement('div'),{className:'box',dataset:{key:`${r}-${c}`}}));}}}
-  function selectLine(r,c){const key=`${r}-${c}`;if(lines.has(key))return;lines.add(key);const el=document.querySelector(`.line[data-key="${key}"]`);el.classList.add('active');el.style.backgroundColor=['#4a90e2','#e94e77','#f5a623','#7ed321'][turn];if(!checkBoxes(r,c))turn=(turn+1)%players.length;else if(isOver())return endGame();updateStatus();}
-  function checkBoxes(r,c){let claimed=false;[[0,1],[0,-1],[1,0],[-1,0]].forEach(([dr,dc])=>{const rr=r+dr,cc=c+dc;const corners=[[rr-1,cc-1],[rr-1,cc+1],[rr+1,cc-1],[rr+1,cc+1]];if(rr%2&&cc%2&&corners.every(([ar,ac])=>lines.has(`${ar}-${cc}`)&&lines.has(`${rr}-${ac}`))){const box=document.querySelector(`.box[data-key="${rr}-${cc}"]`);if(!box.classList.length){box.classList.add(`player-${turn+1}`);box.textContent=turn+1;scores[players[turn]]++;claimed=true;}}});return claimed;}
-  function updateStatus(){document.getElementById('status').textContent=`Player ${turn+1}'s turn`;document.getElementById('status').style.color=['#4a90e2','#e94e77','#f5a623','#7ed321'][turn];}
-  function isOver(){return Object.values(scores).reduce((a,b)=>a+b,0)===(boardSize-1)**2;}
-  function endGame(){document.getElementById('status').textContent='Game Over';const winner=Object.entries(scores).sort((a,b)=>b[1]-a[1])[0][0];document.getElementById('status').textContent=`Winner: Player ${players.indexOf(winner)+1}`;}
+  const auth = firebase.auth(), db = firebase.database();
+
+  // Game state
+  let user, mode = 2, code, players = [], turn = 0, boardSize = 5, lines = new Set(), scores = {};
+  document.addEventListener('DOMContentLoaded', () => selectMode(2)); // default selection
+
+  // Auth handlers
+  auth.onAuthStateChanged(async u => {
+    if (u) {
+      user = u;
+      document.getElementById('auth-screen').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+      document.getElementById('username').textContent = u.displayName;
+      const ref = db.ref('users/' + u.uid);
+      const snap = await ref.get();
+      let r = snap.child('rating').exists() ? snap.child('rating').val() : 1000;
+      await ref.update({ rating: r, displayName: u.displayName });
+      document.getElementById('rating').textContent = 'Rating: ' + r;
+      loadLeader();
+      show('home');
+    }
+  });
+  function signIn() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
+  function signOut() { auth.signOut(); location.reload(); }
+
+  // UI helpers
+  function selectMode(m) {
+    mode = m;
+    ['btn2','btn4'].forEach(id => document.getElementById(id).classList.remove('ring'));
+    document.getElementById(m===2 ? 'btn2' : 'btn4').classList.add('ring','ring-white');
+  }
+  function show(view) {
+    ['home','game','leaderboard','settings'].forEach(s => document.getElementById('screen-'+s).classList.add('hidden'));
+    document.getElementById('screen-'+view).classList.remove('hidden');
+  }
+
+  // Leaderboard
+  async function loadLeader() {
+    const snap = await db.ref('users').orderByChild('rating').limitToLast(20).get();
+    const list = [];
+    snap.forEach(c => list.push({ n: c.val().displayName, r: c.val().rating }));
+    list.sort((a,b) => b.r - a.r);
+    const ctn = document.getElementById('leaderboard'); ctn.innerHTML = '';
+    list.forEach((u,i) => {
+      const bg = i<3 ? ['bg-yellow-500','bg-gray-300 text-black','bg-yellow-700'][i] : 'bg-gray-700';
+      const row = document.createElement('div');
+      row.className = `flex justify-between p-2 rounded ${bg}`;
+      row.innerHTML = `<span>#${i+1}</span><span>${u.n}</span><span>${u.r}</span>`;
+      ctn.appendChild(row);
+    });
+  }
+
+  // Matchmaking
+  function startMatch() {
+    code = new URLSearchParams(location.search).get('match') || Math.floor(1e7 + Math.random()*9e7).toString();
+    history.replaceState(null,'','?match='+code);
+    document.getElementById('match-link').textContent = 'Code: ' + code;
+    document.getElementById('modal').classList.remove('hidden');
+    const slotRef = db.ref('slots/'+code);
+    slotRef.get().then(async snap => {
+      const v = snap.val() || {};
+      const keys = ['p1','p2','p3','p4'];
+      for (let i=0; i<mode; i++) {
+        if (!v[keys[i]]) { await slotRef.update({ [keys[i]]: user.uid }); break; }
+      }
+      waitForPlayers(slotRef);
+    });
+  }
+  function waitForPlayers(slotRef) {
+    slotRef.on('value', snap => {
+      const v = snap.val() || {};
+      const joined = ['p1','p2','p3','p4'].filter(k=>v[k]).length;
+      if (joined === mode) {
+        slotRef.off();
+        slotRef.remove();
+        beginGame();
+      }
+    });
+  }
+
+  // Start game
+  async function beginGame() {
+    document.getElementById('modal').classList.add('hidden');
+    const snap = await db.ref('slots/'+code).get();
+    const v = snap.val() || {};
+    players = ['p1','p2','p3','p4']
+      .filter(k => v[k])
+      .map(k => v[k]);
+    turn = 0; lines.clear(); scores = {};
+    players.forEach(p => scores[p] = 0);
+    renderPlayerLists(); show('game'); renderBoard(); updateStatus();
+  }
+
+  // Render player names/avatars
+  function renderPlayerLists() {
+    const top = document.getElementById('top-player-list');
+    const bot = document.getElementById('bottom-player-list');
+    top.innerHTML = bot.innerHTML = '';
+    const colors = ['#4a90e2','#e94e77','#f5a623','#7ed321'];
+    if (mode === 2) {
+      players.forEach((uid,i) => {
+        const div = document.createElement('div');
+        const label = uid === user.uid ? 'You' : 'Opponent';
+        div.innerHTML = `<span class=\"avatar\" style=\"background:${colors[i]}\"></span>${label}`;
+        bot.appendChild(div);
+      });
+    } else {
+      players.forEach((uid,i) => {
+        const container = i < 2 ? top : bot;
+        const div = document.createElement('div');
+        const label = uid === user.uid ? 'You' : 'Player '+(i+1);
+        div.innerHTML = `<span class=\"avatar\" style=\"background:${colors[i]}\"></span>${label}`;
+        container.appendChild(div);
+      });
+    }
+  }
+
+  // Board rendering and game logic
+  function renderBoard() {
+    const gb = document.getElementById('game-board');
+    gb.innerHTML = '';
+    const size = boardSize*2 - 1;
+    gb.style.gridTemplateColumns = `repeat(${size}, auto)`;
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        if (r%2===0 && c%2===0) {
+          const dot = document.createElement('div'); dot.className='dot'; gb.appendChild(dot);
+        } else if (r%2===0 || c%2===0) {
+          const line = document.createElement('div');
+          line.className = 'line ' + (r%2===0 ? 'horizontal' : 'vertical');
+          line.dataset.key = `${r}-${c}`;
+          line.onclick = () => selectLine(r,c);
+          gb.appendChild(line);
+        } else {
+          const box = document.createElement('div');
+          box.className = 'box';
+          box.dataset.key = `${r}-${c}`;
+          gb.appendChild(box);
+        }
+      }
+    }
+  }
+
+  function selectLine(r,c) {
+    const key = `${r}-${c}`;
+    if (lines.has(key)) return;
+    lines.add(key);
+    const el = document.querySelector(`.line[data-key=\"${key}\"]`);
+    el.classList.add('active');
+    el.style.backgroundColor = ['#4a90e2','#e94e77','#f5a623','#7ed321'][turn];
+    if (!checkBoxes(r,c)) turn = (turn+1) % players.length;
+    else if (isOver()) return endGame();
+    updateStatus();
+  }
+
+  function checkBoxes(r,c) {
+    let claimed = false;
+    [[0,1],[0,-1],[1,0],[-1,0]].forEach(([dr,dc]) => {
+      const rr = r+dr, cc = c+dc;
+      if (rr%2 && cc%2) {
+        const corners = [[rr-1,cc-1],[rr-1,cc+1],[rr+1,cc-1],[rr+1,cc+1]];
+        if (corners.every(([ar,ac]) => lines.has(`${ar}-${ac}`))) {
+          const box = document.querySelector(`.box[data-key=\"${rr}-${cc}\"]`);
+          if (!box.classList.length) {
+            box.classList.add(`player-${turn+1}`);
+            box.textContent = turn+1;
+            scores[players[turn]]++;
+            claimed = true;
+          }
+        }
+      }
+    });
+    return claimed;
+  }
+
+  function updateStatus() {
+    const statusEl = document.getElementById('status');
+    statusEl.textContent = `Player ${turn+1}'s turn`;
+    statusEl.style.color = ['#4a90e2','#e94e77','#f5a623','#7ed321'][turn];
+  }
+
+  function isOver() {
+    return Object.values(scores).reduce((a,b) => a+b,0) === (boardSize-1)*(boardSize-1);
+  }
+
+  function endGame() {
+    const statusEl = document.getElementById('status');
+    statusEl.textContent = 'Game Over';
+    const winner = Object.entries(scores).sort((a,b) => b[1]-a[1])[0][0];
+    statusEl.textContent = `Winner: ${winner===user.uid ? 'You' : 'Player '+(players.indexOf(winner)+1)}`;
+  }
 </script>
 </body>
 </html>
