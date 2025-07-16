@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Dot and Box Online Multiplayer with Matchmaking</title>
+<title>Dot and Box Online Multiplayer</title>
 
 <!-- Tailwind CDN -->
 <script src="https://cdn.tailwindcss.com"></script>
@@ -32,8 +32,6 @@
     width: 7px;
   }
   .line.active {
-    background-color: var(--active-color);
-    box-shadow: 0 0 8px var(--active-color);
     cursor: default;
   }
   .box {
@@ -94,7 +92,7 @@
     text-shadow: 0 0 6px #00ff00;
   }
   #restart {
-    display: block;
+    display: none;
     margin: 0 auto 2rem auto;
     padding: 12px 30px;
     font-size: 1.2rem;
@@ -147,11 +145,32 @@
     width: 50px;
     height: 50px;
     animation: spin 1.5s linear infinite;
-    margin: 0 auto 20px auto;
+    margin: 0 auto 1rem auto;
   }
   @keyframes spin {
     0% {transform: rotate(0deg);}
     100% {transform: rotate(360deg);}
+  }
+  /* Bottom nav */
+  .bottom-nav {
+    border-top: 1px solid #555;
+    display: flex;
+    justify-content: space-around;
+    background-color: #121212;
+  }
+  .bottom-nav button {
+    flex-grow: 1;
+    padding: 1rem 0;
+    font-size: 1.1rem;
+    color: #bbb;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  .bottom-nav button.active, .bottom-nav button:hover {
+    background-color: #222;
+    color: white;
   }
 </style>
 
@@ -170,47 +189,79 @@
 </div>
 
 <!-- Main App -->
-<div id="app" class="hidden flex-grow flex flex-col p-4 max-w-5xl mx-auto">
+<div id="app" class="hidden flex-grow flex flex-col">
 
-  <header class="flex justify-between items-center mb-6">
+  <!-- Top Bar -->
+  <header class="flex justify-between items-center p-4 border-b border-gray-700">
     <div><span id="username" class="font-bold text-xl"></span> | Rating: <span id="rating" class="font-semibold">0</span></div>
-    <button onclick="signOut()" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-semibold">Sign Out</button>
+    <button onclick="showScreen('settings')" class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded font-semibold">Settings</button>
   </header>
 
-  <section id="mode-select" class="flex justify-center space-x-4 mb-6">
-    <button id="mode-2" class="mode-btn px-5 py-2 border border-white rounded" onclick="selectMode(2)">2 Players</button>
-    <button id="mode-3" class="mode-btn px-5 py-2 border border-white rounded" onclick="selectMode(3)">3 Players</button>
-    <button id="mode-4" class="mode-btn px-5 py-2 border border-white rounded" onclick="selectMode(4)">4 Players</button>
-  </section>
+  <!-- Screens Container -->
+  <main class="flex-grow overflow-auto p-4">
+    <!-- Home Screen -->
+    <section id="screen-home" class="space-y-6">
+      <div class="flex justify-center space-x-4 mb-6">
+        <button id="mode-2" class="mode-btn px-5 py-2 border border-white rounded" onclick="selectMode(2)">2 Players</button>
+        <button id="mode-3" class="mode-btn px-5 py-2 border border-white rounded" onclick="selectMode(3)">3 Players</button>
+        <button id="mode-4" class="mode-btn px-5 py-2 border border-white rounded" onclick="selectMode(4)">4 Players</button>
+      </div>
+      <div class="flex justify-center mb-6">
+        <button id="start-btn" class="bg-green-600 hover:bg-green-700 px-8 py-3 rounded-lg font-semibold" onclick="startMatch()">Start Online Game</button>
+      </div>
 
-  <section class="flex justify-center mb-6">
-    <button id="start-btn" class="bg-green-600 hover:bg-green-700 px-8 py-3 rounded-lg font-semibold" onclick="openWaitingModal()">Start Online Game</button>
-  </section>
+      <div id="match-link" class="text-center mb-6 text-sm text-blue-400"></div>
 
-  <div id="match-link" class="text-center mb-6 text-sm text-blue-400"></div>
+      <div id="status" class="blue-turn"></div>
 
-  <div id="status" class="blue-turn"></div>
+      <div id="game-board" class="mx-auto grid gap-1" style="user-select:none;"></div>
 
-  <div id="game-board" class="mx-auto grid gap-1" style="user-select:none;"></div>
+      <button id="restart" onclick="restartGame()">Restart Game</button>
 
-  <button id="restart" class="hidden" onclick="restartGame()">Restart Game</button>
+      <div id="winner-message"></div>
+    </section>
 
-  <div id="winner-message"></div>
+    <!-- Leaderboard Screen -->
+    <section id="screen-leaderboard" class="hidden">
+      <h2 class="text-3xl font-bold mb-6">Leaderboard</h2>
+      <div id="leaderboard-list" class="space-y-2 max-h-96 overflow-y-auto"></div>
+    </section>
 
+    <!-- Friends Screen -->
+    <section id="screen-friends" class="hidden">
+      <h2 class="text-3xl font-bold mb-6">Friends (Coming Soon)</h2>
+      <p>Here you will be able to add and play with friends.</p>
+    </section>
+
+    <!-- Settings Screen -->
+    <section id="screen-settings" class="hidden">
+      <h2 class="text-3xl font-bold mb-6">Settings</h2>
+      <button onclick="signOut()" class="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-semibold">Sign Out</button>
+    </section>
+  </main>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <button id="nav-home" onclick="showScreen('home')" class="active">🏠<br><small>Home</small></button>
+    <button id="nav-leaderboard" onclick="showScreen('leaderboard')">⭐<br><small>Leaderboard</small></button>
+    <button id="nav-friends" onclick="showScreen('friends')">👥<br><small>Friends</small></button>
+    <button id="nav-settings" onclick="showScreen('settings')">⚙️<br><small>Settings</small></button>
+  </nav>
 </div>
 
 <!-- Waiting Modal -->
 <div id="modal">
   <div id="modal-content">
-    <h2 class="text-2xl mb-4" id="modal-status-text">Waiting for other players...</h2>
+    <h2 class="text-2xl mb-4">Waiting for other players...</h2>
     <div class="loader"></div>
+    <p id="players-found" class="mb-4 font-semibold text-lg">Players found: 1/<span id="total-players">2</span></p>
+    <h3 class="mt-2 text-xl font-bold">Current Leaderboard</h3>
     <div id="modal-leaderboard" class="max-h-48 overflow-y-auto text-left text-sm"></div>
-    <button id="cancel-matchmaking" class="mt-4 px-4 py-2 bg-red-600 rounded hover:bg-red-700">Cancel</button>
   </div>
 </div>
 
 <script>
-  // Firebase config - তোমার credentials বসাতে হবে!
+  // Firebase config - তোমার credentials বসাও এখানে
   const firebaseConfig = {
   apiKey: "AIzaSyB-5CakD79CthsI-_vcqblOCN1sXS6U8u8",
   authDomain: "dot-and-box-90d27.firebaseapp.com",
@@ -229,6 +280,8 @@
   const app = document.getElementById('app');
   const usernameEl = document.getElementById('username');
   const ratingEl = document.getElementById('rating');
+  const modeButtons = [2,3,4].map(n => document.getElementById(`mode-${n}`));
+  const startBtn = document.getElementById('start-btn');
   const matchLinkEl = document.getElementById('match-link');
   const statusEl = document.getElementById('status');
   const gameBoard = document.getElementById('game-board');
@@ -236,27 +289,35 @@
   const winnerMessage = document.getElementById('winner-message');
   const modal = document.getElementById('modal');
   const modalLeaderboard = document.getElementById('modal-leaderboard');
-  const modalStatusText = document.getElementById('modal-status-text');
-  const cancelMatchmakingBtn = document.getElementById('cancel-matchmaking');
+  const playersFoundEl = document.getElementById('players-found');
+  const totalPlayersEl = document.getElementById('total-players');
 
-  const modeButtons = [2,3,4].map(n => document.getElementById(`mode-${n}`));
+  // Screens & Nav buttons
+  const screens = ['home','leaderboard','friends','settings'].map(name => document.getElementById(`screen-${name}`));
+  const navButtons = ['nav-home','nav-leaderboard','nav-friends','nav-settings'].map(id => document.getElementById(id));
 
+  // Game vars
   let user = null;
   let userRating = 1000;
   let mode = 2;
+  let matchId = null;
   let players = [];
   let currentPlayerIndex = 0;
   let scores = {};
   let lines = new Set();
-  let boardSize = 5; // 5 dots per row/col
+  let boardSize = 5; // 5 dots in row/col
   let isMyTurn = false;
   let colors = ['#4a90e2','#e94e77','#f5a623','#7ed321']; // Players colors
-  let matchmakingTimeout = null;
-  let matchmakingStartTime = null;
-  let waitingRef = null;
-  let gameRef = null;
-  let currentMatchId = null;
 
+  // Show/Hide screens and nav button active states
+  function showScreen(name){
+    screens.forEach(s => s.classList.add('hidden'));
+    navButtons.forEach(btn => btn.classList.remove('active'));
+    document.getElementById(`screen-${name}`).classList.remove('hidden');
+    document.getElementById(`nav-${name}`).classList.add('active');
+  }
+
+  // Authentication
   auth.onAuthStateChanged(async (u) => {
     if(u){
       user = u;
@@ -264,7 +325,6 @@
       app.style.display = 'flex';
       usernameEl.textContent = u.displayName;
 
-      // Fetch or initialize rating
       const userRef = db.ref(`users/${u.uid}`);
       const snapshot = await userRef.get();
       if(snapshot.exists()){
@@ -273,10 +333,12 @@
         await userRef.set({displayName: u.displayName, rating: 1000});
       }
       ratingEl.textContent = userRating;
+
       selectMode(2);
       loadLeaderboard();
-      listenForMatchAssignment();
+      showScreen('home');
     } else {
+      user = null;
       authScreen.style.display = 'flex';
       app.style.display = 'none';
     }
@@ -286,9 +348,6 @@
     auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
   }
   function signOut(){
-    if(currentMatchId){
-      leaveMatch();
-    }
     auth.signOut();
   }
 
@@ -296,490 +355,352 @@
     mode = n;
     modeButtons.forEach(btn => btn.classList.remove('active'));
     document.getElementById(`mode-${n}`).classList.add('active');
+    totalPlayersEl.textContent = n;
   }
 
-  function loadLeaderboard(){
-    db.ref('users').orderByChild('rating').limitToLast(20).once('value', snap => {
-      modalLeaderboard.innerHTML = '';
-      const users = [];
-      snap.forEach(child => users.push(child.val()));
-      users.sort((a,b)=>b.rating - a.rating);
-      users.forEach((u,i) => {
-        const d = document.createElement('div');
-        d.textContent = `#${i+1} ${u.displayName} — Rating: ${u.rating}`;
-        d.className = "mb-1";
-        modalLeaderboard.appendChild(d);
-      });
+  // Load leaderboard for modal and leaderboard screen
+  async function loadLeaderboard(){
+    const snapshot = await db.ref('users').orderByChild('rating').limitToLast(20).get();
+    const users = [];
+    snapshot.forEach(child => users.push(child.val()));
+    users.sort((a,b)=>b.rating - a.rating);
+
+    // Clear both
+    modalLeaderboard.innerHTML = '';
+    const leaderboardList = document.getElementById('leaderboard-list');
+    leaderboardList.innerHTML = '';
+
+    users.forEach((u,i) => {
+      const entry = document.createElement('div');
+      entry.className = "mb-1";
+      entry.textContent = `#${i+1} ${u.displayName} — Rating: ${u.rating}`;
+      modalLeaderboard.appendChild(entry);
+
+      // Also for main leaderboard
+      const e2 = entry.cloneNode(true);
+      leaderboardList.appendChild(e2);
     });
   }
 
-  // ========== Matchmaking Functions ============
-
-  function openWaitingModal(){
+  // Start matchmaking with automatic matching for players in same mode
+  async function startMatch(){
     modal.classList.add('active');
-    modalStatusText.textContent = `Waiting for other players...`;
-    // Add self to waiting list for current mode
-    waitingRef = db.ref(`waiting/${mode}/${user.uid}`);
-    waitingRef.set({
-      name: user.displayName,
-      timestamp: Date.now()
-    });
-
-    matchmakingStartTime = Date.now();
-
-    listenForWaitingPool();
-
-    // Setup matchmaking timeout (1 min 30 sec = 90 sec)
-    matchmakingTimeout = setTimeout(() => {
-      cancelMatchmaking();
-      alert("Matchmaking timed out. Please try again.");
-    }, 90000);
-
-    cancelMatchmakingBtn.style.display = 'inline-block';
-  }
-
-  function cancelMatchmaking(){
-    modal.classList.remove('active');
-    cancelMatchmakingBtn.style.display = 'none';
-
-    if(waitingRef){
-      waitingRef.remove();
-      waitingRef = null;
-    }
-    if(gameRef){
-      gameRef.off();
-      gameRef = null;
-    }
-    if(matchmakingTimeout){
-      clearTimeout(matchmakingTimeout);
-      matchmakingTimeout = null;
-    }
+    players = [];
+    currentPlayerIndex = 0;
+    scores = {};
+    lines.clear();
+    winnerMessage.textContent = '';
+    restartBtn.style.display = 'none';
+    gameBoard.innerHTML = '';
     matchLinkEl.textContent = '';
-  }
 
-  // Listen to waiting pool and update modal count, try to form match if possible
-  function listenForWaitingPool(){
-    const waitingPoolRef = db.ref(`waiting/${mode}`);
+    totalPlayersEl.textContent = mode;
+    updatePlayersFoundUI(1);
 
-    waitingPoolRef.on('value', snapshot => {
-      const playersWaiting = snapshot.val() || {};
-      const uids = Object.keys(playersWaiting);
+    // Look for open match slots of this mode
+    const matchesRef = db.ref('matchSlots');
+    const matchesSnap = await matchesRef.orderByChild('mode').equalTo(mode).get();
 
-      modalStatusText.textContent = `Players Found ${uids.length}/${mode}`;
-
-      if(uids.length >= mode){
-        // Select first `mode` players
-        const selectedPlayers = uids.slice(0, mode);
-        startMatchWithPlayers(selectedPlayers);
+    let joinedMatch = null;
+    matchesSnap.forEach(snap => {
+      const val = snap.val();
+      if(val.players && Object.keys(val.players).length < mode){
+        joinedMatch = snap.key;
+        return true; // break loop
       }
     });
-  }
 
-  // Start a match with selected players, remove them from waiting pool, notify them by setting currentMatch under user node
-  async function startMatchWithPlayers(playerUIDs){
-    // Prevent double match start
-    if(currentMatchId) return;
-
-    // Remove players from waiting pool
-    const waitingRemoves = playerUIDs.map(uid => db.ref(`waiting/${mode}/${uid}`).remove());
-    await Promise.all(waitingRemoves);
-
-    // Generate unique match ID
-    const matchId = Math.floor(10000000 + Math.random()*90000000).toString();
-    currentMatchId = matchId;
-
-    // Prepare players object with order and names
-    const playersObj = {};
-    playerUIDs.forEach((uid, idx) => {
-      playersObj[uid] = { name: '', order: idx };
-    });
-
-    // Save match info to DB
-    await db.ref(`matches/${matchId}`).set({
-      mode,
-      started: true,
-      players: playersObj,
-      scores: {},
-      lines: [],
-      currentPlayerIndex: 0
-    });
-
-    // Notify all players by setting currentMatch in their user node
-    const notifyPromises = playerUIDs.map(uid => 
-      db.ref(`users/${uid}/currentMatch`).set(matchId)
-    );
-    await Promise.all(notifyPromises);
-
-    // Stop listening waiting pool for this user
-    if(waitingRef){
-      waitingRef.off();
-      waitingRef.remove();
-      waitingRef = null;
-    }
-    if(matchmakingTimeout){
-      clearTimeout(matchmakingTimeout);
-      matchmakingTimeout = null;
+    if(joinedMatch){
+      // Join this match
+      const matchRef = db.ref(`matchSlots/${joinedMatch}/players`);
+      const playersSnap = await matchRef.get();
+      if(playersSnap.exists()){
+        const currentPlayers = playersSnap.val();
+        if(!currentPlayers[user.uid]){
+          currentPlayers[user.uid] = {name: user.displayName};
+          await matchRef.set(currentPlayers);
+        }
+        players = Object.keys(currentPlayers);
+        matchId = joinedMatch;
+      }
+    } else {
+      // Create new match slot
+      const newMatchRef = matchesRef.push();
+      matchId = newMatchRef.key;
+      await newMatchRef.set({mode, players: {[user.uid]: {name: user.displayName}}});
+      players = [user.uid];
     }
 
-    modal.classList.remove('active');
-    cancelMatchmakingBtn.style.display = 'none';
+    updatePlayersFoundUI(players.length);
 
-    // Now start game locally for current user
-    if(playerUIDs.includes(user.uid)){
-      initGame(matchId, playerUIDs);
-    }
-  }
+    // Listen for changes
+    const currentMatchRef = db.ref(`matchSlots/${matchId}`);
+    currentMatchRef.on('value', async snap => {
+      const val = snap.val();
+      if(!val) return;
+      players = val.players ? Object.keys(val.players) : [];
+      updatePlayersFoundUI(players.length);
 
-  // Listen for currentMatch assignment in user's data
-  function listenForMatchAssignment(){
-    db.ref(`users/${user?.uid}/currentMatch`).on('value', snapshot => {
-      const val = snapshot.val();
-      if(val && val !== currentMatchId){
-        currentMatchId = val;
+      if(players.length === mode){
+        // Start game
+        currentMatchRef.off();
+        await db.ref(`matches/${matchId}`).set({
+          players,
+          mode,
+          started: true
+        });
+        await db.ref(`matchSlots/${matchId}`).remove();
+
         modal.classList.remove('active');
-        cancelMatchmakingBtn.style.display = 'none';
-        initGame(currentMatchId);
+        initGame();
       }
     });
   }
 
-  // ========== Game Functions ============
-
-  function initGame(matchId, playerUIDs = null){
-    players = playerUIDs || [];
-    if(players.length === 0){
-      // fetch players from DB if not provided
-      db.ref(`matches/${matchId}/players`).once('value').then(snap => {
-        const data = snap.val() || {};
-        players = Object.entries(data).sort((a,b) => a[1].order - b[1].order).map(e => e[0]);
-        setupGame(matchId);
-      });
-    } else {
-      setupGame(matchId);
-    }
+  // Update the "Players found: X / N" text in modal
+  function updatePlayersFoundUI(currentCount){
+    playersFoundEl.innerHTML = `Players found: ${currentCount}/${mode}`;
   }
 
-   function setupGame(matchId) {
-  // Reset states
-  scores = {};
-  lines = new Set();
-  players.forEach(uid => scores[uid] = 0);
-  currentPlayerIndex = 0;
-  isMyTurn = false;
-  winnerMessage.textContent = '';
-  restartBtn.style.display = 'none';
-  matchLinkEl.textContent = `Match code: ${matchId}`;
-  statusEl.className = ''; // clear old turn colors
-
-  // Setup board UI
-  createBoard();
-
-  // Reference to game in DB
-  gameRef = db.ref(`matches/${matchId}`);
-
-  // Listen for game state changes
-  gameRef.on('value', snapshot => {
-    const data = snapshot.val();
-    if(!data) return;
-
-    scores = data.scores || {};
-    lines = new Set(data.lines || []);
-    currentPlayerIndex = data.currentPlayerIndex || 0;
-
-    updateBoard();
-    updateStatus();
-    checkGameOver();
-
-    // Check if it's this user's turn
+  // Initialize the game board and variables
+  function initGame(){
     isMyTurn = (players[currentPlayerIndex] === user.uid);
-  });
-}
+    lines.clear();
+    scores = {};
+    winnerMessage.textContent = '';
+    restartBtn.style.display = 'none';
+    matchLinkEl.textContent = '';
 
-function createBoard() {
-  gameBoard.style.gridTemplateColumns = `repeat(${boardSize * 2 - 1}, auto)`;
-  gameBoard.innerHTML = '';
-
-  for (let r = 0; r < boardSize * 2 - 1; r++) {
-    for (let c = 0; c < boardSize * 2 - 1; c++) {
-      if (r % 2 === 0 && c % 2 === 0) {
-        const dot = document.createElement('div');
-        dot.className = 'dot';
-        gameBoard.appendChild(dot);
-      } else if (r % 2 === 0 || c % 2 === 0) {
-        const line = document.createElement('div');
-        line.className = 'line ' + (r % 2 === 0 ? 'horizontal' : 'vertical');
-        line.dataset.row = r;
-        line.dataset.col = c;
-        line.style.setProperty('--active-color', colors[0]);
-        line.addEventListener('click', () => onLineClick(r, c));
-        gameBoard.appendChild(line);
-      } else {
-        const box = document.createElement('div');
-        box.className = 'box';
-        box.dataset.row = r;
-        box.dataset.col = c;
-        gameBoard.appendChild(box);
-      }
-    }
-  }
-}
-
-function onLineClick(row, col) {
-  const key = `${row}-${col}`;
-  if (lines.has(key)) return;
-  if (!isMyTurn) {
-    alert("It's not your turn!");
-    return;
-  }
-
-  lines.add(key);
-  updateLinesInDB();
-
-  // Check for completed boxes
-  const boxesCompleted = checkCompletedBoxes(row, col);
-  let scored = false;
-  if (boxesCompleted.length) {
-    scored = true;
-    boxesCompleted.forEach(() => {
-      scores[players[currentPlayerIndex]]++;
+    // Setup scores for each player
+    players.forEach((p, idx) => {
+      scores[p] = 0;
     });
-    updateScoresInDB();
+
+    createBoard();
+    updateStatus();
   }
 
-  if (!scored) {
-    // Change turn
-    currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
-    updateCurrentPlayerInDB();
-  }
-}
+  // Create the Dot and Box board UI grid
+  function createBoard(){
+    // Clear previous board
+    gameBoard.innerHTML = '';
 
-function checkCompletedBoxes(r, c) {
-  const completed = [];
+    // Board size is dots count per row/col, so boxes are (boardSize-1)^2
+    // Grid structure: alternating dot-line-dot-line ... (2*boardSize-1 rows and cols)
+    const gridSize = 2 * boardSize - 1;
+    gameBoard.style.gridTemplateColumns = `repeat(${gridSize}, auto)`;
+    gameBoard.style.gridTemplateRows = `repeat(${gridSize}, auto)`;
 
-  function hasLine(rr, cc) {
-    return lines.has(`${rr}-${cc}`);
-  }
-
-  function boxComplete(rr, cc) {
-    return hasLine(rr - 1, cc) && hasLine(rr + 1, cc) && hasLine(rr, cc - 1) && hasLine(rr, cc + 1);
-  }
-
-  if (r % 2 === 0) {
-    // horizontal line, check box above and below
-    if (r > 0 && c > 0 && boxComplete(r - 1, c)) completed.push([r - 1, c]);
-    if (r < boardSize * 2 - 2 && c > 0 && boxComplete(r + 1, c)) completed.push([r + 1, c]);
-  } else {
-    // vertical line, check box left and right
-    if (c > 0 && r > 0 && boxComplete(r, c - 1)) completed.push([r, c - 1]);
-    if (c < boardSize * 2 - 2 && r > 0 && boxComplete(r, c + 1)) completed.push([r, c + 1]);
-  }
-
-  return completed;
-}
-
-function updateLinesInDB() {
-  gameRef.child('lines').set(Array.from(lines));
-}
-
-function updateScoresInDB() {
-  gameRef.child('scores').set(scores);
-}
-
-function updateCurrentPlayerInDB() {
-  gameRef.child('currentPlayerIndex').set(currentPlayerIndex);
-}
-
-function updateBoard() {
-  document.querySelectorAll('.line').forEach(line => {
-    const key = `${line.dataset.row}-${line.dataset.col}`;
-    if (lines.has(key)) {
-      line.classList.add('active');
-      // Determine which player drew this line for color (optional: use last player who played)
-      // For simplicity, just use color of current player
-      const playerColor = colors[currentPlayerIndex];
-      line.style.setProperty('--active-color', playerColor);
-      line.style.backgroundColor = playerColor;
-      line.style.boxShadow = `0 0 8px ${playerColor}`;
-      line.style.cursor = 'default';
-      line.removeEventListener('click', () => onLineClick(parseInt(line.dataset.row), parseInt(line.dataset.col)));
-    } else {
-      line.classList.remove('active');
-      line.style.backgroundColor = '#444';
-      line.style.boxShadow = 'none';
-      line.style.cursor = 'pointer';
-    }
-  });
-
-  // Color boxes based on owner
-  document.querySelectorAll('.box').forEach(box => {
-    const r = parseInt(box.dataset.row);
-    const c = parseInt(box.dataset.col);
-    // Find which player owns this box
-    let ownerIndex = -1;
-    for (let i = 0; i < players.length; i++) {
-      // Check box completion condition for each player score in real app
-      // Here, we check if box is surrounded by lines and assign color
-      if (isBoxOwnedByPlayer(r, c, i)) {
-        ownerIndex = i;
-        break;
+    for(let row=0; row<gridSize; row++){
+      for(let col=0; col<gridSize; col++){
+        if(row % 2 === 0 && col % 2 === 0){
+          // Dot
+          const dot = document.createElement('div');
+          dot.className = 'dot';
+          gameBoard.appendChild(dot);
+        } else if(row % 2 === 0){
+          // Horizontal line
+          const line = document.createElement('div');
+          line.className = 'line horizontal';
+          line.dataset.type = 'h';
+          line.dataset.row = row;
+          line.dataset.col = col;
+          line.onclick = () => handleLineClick(line);
+          gameBoard.appendChild(line);
+        } else if(col % 2 === 0){
+          // Vertical line
+          const line = document.createElement('div');
+          line.className = 'line vertical';
+          line.dataset.type = 'v';
+          line.dataset.row = row;
+          line.dataset.col = col;
+          line.onclick = () => handleLineClick(line);
+          gameBoard.appendChild(line);
+        } else {
+          // Box
+          const box = document.createElement('div');
+          box.className = 'box';
+          box.dataset.row = row;
+          box.dataset.col = col;
+          gameBoard.appendChild(box);
+        }
       }
     }
-    if (ownerIndex >= 0) {
-      box.style.backgroundColor = colors[ownerIndex];
-      box.textContent = '';
+  }
+
+  // Handle clicking on a line
+  function handleLineClick(line){
+    if(!isMyTurn) return; // Only current player can play
+
+    if(line.classList.contains('active')) return; // Already taken
+
+    const lineId = `${line.dataset.type}${line.dataset.row}-${line.dataset.col}`;
+    if(lines.has(lineId)) return; // Defensive
+
+    // Mark line as active and record it
+    line.classList.add('active');
+    line.style.backgroundColor = colors[currentPlayerIndex];
+    lines.add(lineId);
+
+    // Check if this move completes any boxes
+    const completedBoxes = checkCompletedBoxes(line.dataset.type, parseInt(line.dataset.row), parseInt(line.dataset.col));
+    if(completedBoxes.length > 0){
+      // Mark boxes with current player color and increment score
+      completedBoxes.forEach(box => {
+        box.element.classList.add(`player-${currentPlayerIndex+1}`);
+        scores[players[currentPlayerIndex]]++;
+      });
+      updateStatus();
+      // Player gets another turn - do not change currentPlayerIndex
     } else {
-      box.style.backgroundColor = '#2a2a2a';
-      box.textContent = '';
+      // No boxes completed - next player's turn
+      currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+      isMyTurn = (players[currentPlayerIndex] === user.uid);
+      updateStatus();
     }
-  });
-}
 
-function isBoxOwnedByPlayer(r, c, playerIndex) {
-  // Since we don't keep owner in DB separately, infer ownership by scores and completed boxes
-  // This function needs a better way if want to assign box ownership separately.
-  // For now, assume boxes are assigned on scoring. For detailed ownership tracking, extra logic is needed.
-  // Here, skipping implementation for brevity.
-  return false;
-}
-
-function updateStatus() {
-  if (winnerMessage.textContent) {
-    statusEl.textContent = 'Game Over';
-    statusEl.className = '';
-    return;
+    // Check if game ended
+    if(lines.size === ((boardSize-1) * boardSize * 2)){ // total lines count: horizontal + vertical lines
+      endGame();
+    }
   }
-  const playerName = players[currentPlayerIndex] === user.uid ? 'You' : 'Opponent ' + (currentPlayerIndex + 1);
-  const colorClass = ['blue-turn', 'red-turn', 'orange-turn', 'green-turn'][currentPlayerIndex] || 'blue-turn';
-  statusEl.textContent = `${playerName}'s turn`;
-  statusEl.className = colorClass;
-}
 
-function checkGameOver() {
-  // Game over when all boxes are claimed
-  const totalBoxes = (boardSize - 1) * (boardSize - 1);
-  let claimedBoxes = 0;
-  for (const playerId in scores) {
-    claimedBoxes += scores[playerId];
+  // Check which boxes got completed by last line placed
+  function checkCompletedBoxes(type, row, col){
+    const completed = [];
+    // Boxes are on odd row and col positions
+    // Check up to 2 boxes that this line may complete
+
+    function getLineId(t,r,c){
+      return `${t}${r}-${c}`;
+    }
+
+    // Helper to get box element by row,col
+    function getBox(r,c){
+      if(r < 0 || c < 0) return null;
+      const gridSize = 2*boardSize - 1;
+      if(r >= gridSize || c >= gridSize) return null;
+      // Box elements are divs with class "box" in gameBoard children
+      // Because the board is a grid, we can find the index:
+      // index = r*gridSize + c
+      const idx = r * gridSize + c;
+      const el = gameBoard.children[idx];
+      if(el && el.classList.contains('box')) return el;
+      return null;
+    }
+
+    const gridSize = 2*boardSize - 1;
+
+    if(type === 'h'){
+      // Horizontal line at (row, col) is above box at (row+1,col) and below box at (row-1,col)
+      // Check box below
+      const boxBelow = getBox(row+1, col);
+      if(boxBelow){
+        // Check all 4 lines of this box:
+        // Top horizontal: h(row, col)
+        // Bottom horizontal: h(row+2, col)
+        // Left vertical: v(row+1, col-1)
+        // Right vertical: v(row+1, col+1)
+        const top = getLineId('h', row, col);
+        const bottom = getLineId('h', row+2, col);
+        const left = getLineId('v', row+1, col-1);
+        const right = getLineId('v', row+1, col+1);
+        if(lines.has(top) && lines.has(bottom) && lines.has(left) && lines.has(right)){
+          completed.push({element: boxBelow});
+        }
+      }
+      // Check box above
+      const boxAbove = getBox(row-1, col);
+      if(boxAbove){
+        const top = getLineId('h', row-2, col);
+        const bottom = getLineId('h', row, col);
+        const left = getLineId('v', row-1, col-1);
+        const right = getLineId('v', row-1, col+1);
+        if(lines.has(top) && lines.has(bottom) && lines.has(left) && lines.has(right)){
+          completed.push({element: boxAbove});
+        }
+      }
+    } else if(type === 'v'){
+      // Vertical line at (row, col) is left of box at (row, col+1) and right of box at (row, col-1)
+      // Check box right
+      const boxRight = getBox(row, col+1);
+      if(boxRight){
+        const top = getLineId('h', row-1, col+1);
+        const bottom = getLineId('h', row+1, col+1);
+        const left = getLineId('v', row, col);
+        const right = getLineId('v', row, col+2);
+        if(lines.has(top) && lines.has(bottom) && lines.has(left) && lines.has(right)){
+          completed.push({element: boxRight});
+        }
+      }
+      // Check box left
+      const boxLeft = getBox(row, col-1);
+      if(boxLeft){
+        const top = getLineId('h', row-1, col-1);
+        const bottom = getLineId('h', row+1, col-1);
+        const left = getLineId('v', row, col-2);
+        const right = getLineId('v', row, col);
+        if(lines.has(top) && lines.has(bottom) && lines.has(left) && lines.has(right)){
+          completed.push({element: boxLeft});
+        }
+      }
+    }
+    return completed;
   }
-  if (claimedBoxes >= totalBoxes) {
-    // Game over
-    winnerMessage.textContent = getWinnerMessage();
+
+  // Update status bar showing current player turn and scores
+  function updateStatus(){
+    const playerName = players[currentPlayerIndex] === user.uid ? "Your turn" : `Player ${currentPlayerIndex+1}'s turn`;
+    statusEl.textContent = playerName;
+
+    // Update status color
+    const colorsClass = ['blue-turn', 'red-turn', 'orange-turn', 'green-turn'];
+    statusEl.className = colorsClass[currentPlayerIndex];
+
+    // Optionally show scores in status
+    let scoreText = 'Scores: ';
+    players.forEach((p,i) => {
+      const n = p === user.uid ? "You" : `P${i+1}`;
+      scoreText += `${n}: ${scores[p]} `;
+    });
+    statusEl.textContent = `${playerName} | ${scoreText.trim()}`;
+  }
+
+  // End the game and show winner
+  function endGame(){
     restartBtn.style.display = 'block';
+    isMyTurn = false;
 
-    // Update ratings with your rules
-    updateRatings();
+    // Find max score
+    let maxScore = -1;
+    players.forEach(p => {
+      if(scores[p] > maxScore) maxScore = scores[p];
+    });
+    // Find all winners (tie possible)
+    const winners = players.filter(p => scores[p] === maxScore);
 
-    // Remove match data and currentMatch assignment after game
-    if (gameRef) {
-      gameRef.off();
-      db.ref(`users/${user.uid}/currentMatch`).remove();
+    if(winners.length === 1){
+      const winnerIndex = players.indexOf(winners[0]);
+      winnerMessage.textContent = (winners[0] === user.uid) ? "You won! 🎉" : `Player ${winnerIndex+1} won! 🎉`;
+    } else {
+      winnerMessage.textContent = "It's a tie!";
     }
   }
-}
 
-function getWinnerMessage() {
-  // Sort players by scores descending
-  const scoreEntries = Object.entries(scores).sort((a,b) => b[1] - a[1]);
-  const places = {};
-  scoreEntries.forEach(([uid, score], idx) => {
-    places[uid] = idx + 1;
-  });
-
-  let msg = "Game Over! ";
-  scoreEntries.forEach(([uid, score], idx) => {
-    const playerLabel = (uid === user.uid) ? "You" : `Player ${idx+1}`;
-    msg += `${playerLabel}: ${score} points. `;
-  });
-
-  return msg;
-}
-
-async function updateRatings() {
-  // রেটিং আপডেট করার লজিক  
-  // তুমি বলেছ:
-  // 3 জনে: 2nd: +8, 3rd: -4
-  // 4 জনে: 1st: +12, 2nd: +8, 3rd: -4, 4th: -8
-  // 2 জনে: simple +12 for winner, -12 for loser (assumed)
-
-  const scoreEntries = Object.entries(scores).sort((a,b) => b[1] - a[1]);
-  let ratingChanges = {};
-
-  if (mode === 2) {
-    // 1st gets +12, 2nd gets -12
-    ratingChanges[scoreEntries[0][0]] = 12;
-    ratingChanges[scoreEntries[1][0]] = -12;
-  } else if (mode === 3) {
-    ratingChanges[scoreEntries[0][0]] = 0; // 1st no change?
-    ratingChanges[scoreEntries[1][0]] = 8;
-    ratingChanges[scoreEntries[2][0]] = -4;
-  } else if (mode === 4) {
-    ratingChanges[scoreEntries[0][0]] = 12;
-    ratingChanges[scoreEntries[1][0]] = 8;
-    ratingChanges[scoreEntries[2][0]] = -4;
-    ratingChanges[scoreEntries[3][0]] = -8;
+  // Restart the current game (local)
+  function restartGame(){
+    lines.clear();
+    scores = {};
+    winnerMessage.textContent = '';
+    restartBtn.style.display = 'none';
+    currentPlayerIndex = 0;
+    isMyTurn = (players[currentPlayerIndex] === user.uid);
+    createBoard();
+    updateStatus();
   }
 
-  // Update ratings in DB
-  for (const [uid, change] of Object.entries(ratingChanges)) {
-    const userRef = db.ref(`users/${uid}`);
-    const snapshot = await userRef.get();
-    if (snapshot.exists()) {
-      const currentRating = snapshot.val().rating || 1000;
-      const newRating = Math.max(0, currentRating + change);
-      await userRef.update({ rating: newRating });
-      if (uid === user.uid) {
-        userRating = newRating;
-        ratingEl.textContent = newRating;
-      }
-    }
-  }
-}
-
-function restartGame() {
-  if (!currentMatchId) return;
-  // Reset game in DB for rematch
-  gameRef.update({
-    scores: players.reduce((acc, uid) => { acc[uid] = 0; return acc; }, {}),
-    lines: [],
-    currentPlayerIndex: 0
-  });
-  winnerMessage.textContent = '';
-  restartBtn.style.display = 'none';
-  updateStatus();
-}
-
-function leaveMatch() {
-  if (gameRef) {
-    gameRef.off();
-    gameRef = null;
-  }
-  if (waitingRef) {
-    waitingRef.remove();
-    waitingRef = null;
-  }
-  if (currentMatchId) {
-    // Remove user's assignment to match
-    db.ref(`users/${user.uid}/currentMatch`).remove();
-    currentMatchId = null;
-  }
-  modal.classList.remove('active');
-  cancelMatchmakingBtn.style.display = 'none';
-  matchLinkEl.textContent = '';
-  players = [];
-  lines.clear();
-  scores = {};
-  currentPlayerIndex = 0;
-  winnerMessage.textContent = '';
-  restartBtn.style.display = 'none';
-  statusEl.textContent = '';
-  isMyTurn = false;
-}
-
-// Cancel matchmaking button
-cancelMatchmakingBtn.addEventListener('click', () => {
-  cancelMatchmaking();
-});
 </script>
-
 </body>
 </html>
+
+  // Update the "Players found: X /
