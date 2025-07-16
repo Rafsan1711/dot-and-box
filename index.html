@@ -1,237 +1,627 @@
-<!DOCTYPE html>
-<html lang="en">
+   <!DOCTYPE html>
+<html lang="en" class="bg-gray-900 text-white">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dot and Box Online</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-  <style>
-    body { font-family: Arial, sans-serif; background:#121212; color:#fff; margin:0; display:flex; flex-direction:column; min-height:100vh; }
-    .hidden { display:none!important; }
-    #game-board { display:grid; gap:5px; margin:20px auto; }
-    .dot { width:12px; height:12px; background:#fff; border-radius:50%; }
-    .line { background:#444; cursor:pointer; transition: background 0.2s; }
-    .line.horizontal { height:6px; width:60px; }
-    .line.vertical { height:60px; width:6px; }
-    .box { width:60px; height:60px; background:#2a2a2a; display:flex; align-items:center; justify-content:center; font-size:1.2em; font-weight:bold; }
-    .avatar { width:24px; height:24px; border-radius:50%; display:inline-block; margin-right:8px; vertical-align:middle; }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dot and Box Online Multiplayer</title>
+
+<!-- Tailwind CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+  body {
+    font-family: 'Inter', sans-serif;
+  }
+  .dot {
+    width: 14px;
+    height: 14px;
+    background-color: white;
+    border-radius: 50%;
+  }
+  .line {
+    background-color: #444;
+    cursor: pointer;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  .line.horizontal {
+    height: 7px;
+    width: 65px;
+  }
+  .line.vertical {
+    height: 65px;
+    width: 7px;
+  }
+  .line.active {
+    background-color: var(--active-color);
+    box-shadow: 0 0 8px var(--active-color);
+    cursor: default;
+  }
+  .box {
+    width: 65px;
+    height: 65px;
+    background-color: #2a2a2a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.6rem;
+    color: white;
+    user-select: none;
+    transition: background-color 0.4s ease;
+  }
+  .player-1 {
+    background-color: #4a90e2;
+  }
+  .player-2 {
+    background-color: #e94e77;
+  }
+  .player-3 {
+    background-color: #f5a623;
+  }
+  .player-4 {
+    background-color: #7ed321;
+  }
+  #status {
+    font-size: 1.7rem;
+    font-weight: 700;
+    margin: 1rem 0;
+    text-align: center;
+    padding: 0.7rem 1.4rem;
+    border-radius: 8px;
+  }
+  .blue-turn {
+    background-color: #4a90e2;
+    box-shadow: 0 0 12px #4a90e2;
+  }
+  .red-turn {
+    background-color: #e94e77;
+    box-shadow: 0 0 12px #e94e77;
+  }
+  .orange-turn {
+    background-color: #f5a623;
+    box-shadow: 0 0 12px #f5a623;
+  }
+  .green-turn {
+    background-color: #7ed321;
+    box-shadow: 0 0 12px #7ed321;
+  }
+  #winner-message {
+    font-size: 1.9rem;
+    font-weight: 800;
+    text-align: center;
+    margin: 1.5rem 0;
+    color: #00ff00;
+    text-shadow: 0 0 6px #00ff00;
+  }
+  #restart {
+    display: block;
+    margin: 0 auto 2rem auto;
+    padding: 12px 30px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    background-color: #555;
+    border: none;
+    border-radius: 10px;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  #restart:hover {
+    background-color: #777;
+  }
+  /* Modal */
+  #modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  #modal.active {
+    display: flex;
+  }
+  #modal-content {
+    background: #111;
+    padding: 2rem;
+    border-radius: 10px;
+    max-width: 400px;
+    width: 90%;
+    color: white;
+    text-align: center;
+  }
+  /* Button Active */
+  .mode-btn {
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  .mode-btn.active {
+    background-color: #4ade80; /* green-400 */
+    color: black;
+  }
+</style>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
 </head>
-<body class="flex flex-col">
-  <!-- Auth Screen -->
-  <div id="auth-screen" class="flex-grow flex items-center justify-center flex-col">
-    <h1 class="text-4xl mb-4">Dot & Box Online</h1>
-    <button onclick="signIn()" class="bg-blue-500 px-6 py-3 rounded">Sign in with Google</button>
+<body class="min-h-screen flex flex-col">
+
+<!-- Auth Screen -->
+<div id="auth-screen" class="flex-grow flex flex-col items-center justify-center p-4">
+  <h1 class="text-5xl font-extrabold mb-8">Dot and Box Online</h1>
+  <button id="signin-btn" class="bg-blue-600 hover:bg-blue-700 px-8 py-3 rounded-lg font-semibold shadow" onclick="signIn()">Sign in with Google</button>
+</div>
+
+<!-- Main App -->
+<div id="app" class="hidden flex-grow flex flex-col p-4 max-w-5xl mx-auto">
+
+  <header class="flex justify-between items-center mb-6">
+    <div><span id="username" class="font-bold text-xl"></span> | Rating: <span id="rating" class="font-semibold">0</span></div>
+    <button onclick="signOut()" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-semibold">Sign Out</button>
+  </header>
+
+  <section id="mode-select" class="flex justify-center space-x-4 mb-6">
+    <button id="mode-2" class="mode-btn px-5 py-2 border border-white rounded" onclick="selectMode(2)">2 Players</button>
+    <button id="mode-3" class="mode-btn px-5 py-2 border border-white rounded" onclick="selectMode(3)">3 Players</button>
+    <button id="mode-4" class="mode-btn px-5 py-2 border border-white rounded" onclick="selectMode(4)">4 Players</button>
+  </section>
+
+  <section class="flex justify-center mb-6">
+    <button id="start-btn" class="bg-green-600 hover:bg-green-700 px-8 py-3 rounded-lg font-semibold" onclick="startMatch()">Start Online Game</button>
+  </section>
+
+  <div id="match-link" class="text-center mb-6 text-sm text-blue-400"></div>
+
+  <div id="status" class="blue-turn"></div>
+
+  <div id="game-board" class="mx-auto grid gap-1" style="user-select:none;"></div>
+
+  <button id="restart" class="hidden" onclick="restartGame()">Restart Game</button>
+
+  <div id="winner-message"></div>
+
+</div>
+
+<!-- Waiting Modal -->
+<div id="modal">
+  <div id="modal-content">
+    <h2 class="text-2xl mb-4">Waiting for other players...</h2>
+    <div class="loader mx-auto mb-4" style="border: 5px solid #444; border-top: 5px solid #00ff00; border-radius: 50%; width: 50px; height: 50px; animation: spin 1.5s linear infinite;"></div>
+    <div id="modal-leaderboard" class="max-h-48 overflow-y-auto text-left text-sm"></div>
   </div>
+</div>
 
-  <!-- Main App -->
-  <div id="app" class="hidden flex-grow flex flex-col">
-    <div class="p-4 flex justify-between items-center bg-gray-800">
-      <div><span id="username" class="font-semibold"></span> <span class="text-gray-400 ml-2">Rating: <span id="rating">0</span></span></div>
-      <div id="match-link" class="text-sm text-blue-400"></div>
-    </div>
-
-    <div id="screens" class="flex-grow p-4 overflow-auto">
-      <div id="screen-home" class="space-y-4">
-        <button onclick="startMatching()" class="w-full bg-green-500 px-4 py-2 rounded">Play Online</button>
-        <div id="modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center hidden z-50">
-          <div class="bg-gray-800 p-6 rounded shadow-lg text-center">
-            <p class="mb-4">Waiting for players...</p>
-            <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-white mx-auto"></div>
-          </div>
-        </div>
-      </div>
-
-      <div id="screen-game" class="hidden">
-        <div id="top-player-list" class="flex justify-center space-x-8 mb-4"></div>
-        <div id="status" class="text-xl font-bold mb-2 text-center"></div>
-        <div id="game-board"></div>
-        <div id="bottom-player-list" class="flex justify-center space-x-8 mt-4"></div>
-      </div>
-
-      <div id="screen-leaderboard" class="hidden">
-        <h2 class="text-2xl mb-4">Leaderboard</h2>
-        <div id="leaderboard" class="space-y-2 max-h-96 overflow-auto"></div>
-      </div>
-
-      <div id="screen-settings" class="hidden">
-        <h2 class="text-2xl mb-4">Settings</h2>
-        <button onclick="signOut()" class="bg-red-500 px-4 py-2 rounded">Sign Out</button>
-      </div>
-    </div>
-
-    <div class="bg-gray-800 flex justify-around p-2">
-      <button onclick="showScreen('home')">🏠 Home</button>
-      <button onclick="showScreen('leaderboard')">⭐ Leaderboard</button>
-      <button onclick="showScreen('settings')">⚙️ Settings</button>
-    </div>
-  </div>
+<style>
+@keyframes spin {
+  0% {transform: rotate(0deg);}
+  100% {transform: rotate(360deg);}
+}
+</style>
 
 <script>
-  // Firebase config
+  // Firebase config - তোমার নিজের credentials বসাতে হবে!
   const firebaseConfig = {
-    apiKey: 'AIzaSyCKfr-jvUKonc2TcEDcejk562kOm8LTAa0',
-    authDomain: 'dot-and-box-online.firebaseapp.com',
-    databaseURL: 'https://dot-and-box-online.firebaseio.com',
-    projectId: 'dot-and-box-online',
-    storageBucket: 'dot-and-box-online.appspot.com',
-    messagingSenderId: '334340725862',
-    appId: '1:334340725862:web:356b78d59e76ff6f5861a7'
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_AUTH_DOMAIN",
+    databaseURL: "YOUR_DB_URL",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_STORAGE_BUCKET",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
   };
   firebase.initializeApp(firebaseConfig);
-  const auth = firebase.auth(), db = firebase.database();
 
-  // State
-  let user, gameId, mode = 4, players = [], turn = 0, boardSize = 5, lines = new Set(), scores = {};
+  const auth = firebase.auth();
+  const db = firebase.database();
 
-  // Auth
-  auth.onAuthStateChanged(async u => {
-    if (u) {
+  // UI Elements
+  const authScreen = document.getElementById('auth-screen');
+  const app = document.getElementById('app');
+  const usernameEl = document.getElementById('username');
+  const ratingEl = document.getElementById('rating');
+  const matchLinkEl = document.getElementById('match-link');
+  const statusEl = document.getElementById('status');
+  const gameBoard = document.getElementById('game-board');
+  const restartBtn = document.getElementById('restart');
+  const winnerMessage = document.getElementById('winner-message');
+  const modal = document.getElementById('modal');
+  const modalLeaderboard = document.getElementById('modal-leaderboard');
+
+  const modeButtons = [2,3,4].map(n => document.getElementById(`mode-${n}`));
+
+  let user = null;
+  let userRating = 1000;
+  let mode = 2;
+  let matchId = null;
+  let players = [];
+  let currentPlayerIndex = 0;
+  let scores = {};
+  let lines = new Set();
+  let boardSize = 5; // 5 dots in row/col
+  let isMyTurn = false;
+  let colors = ['#4a90e2','#e94e77','#f5a623','#7ed321']; // Players colors
+
+  auth.onAuthStateChanged(async (u) => {
+    if(u){
       user = u;
-      document.getElementById('auth-screen').classList.add('hidden');
-      document.getElementById('app').classList.remove('hidden');
-      document.getElementById('username').textContent = u.displayName;
-      const ref = db.ref('users/' + u.uid);
-      const snap = await ref.get();
-      let rating = snap.child('rating').exists() ? snap.child('rating').val() : 1000;
-      await ref.update({ rating, displayName: u.displayName });
-      document.getElementById('rating').textContent = rating;
-      loadLeaderboard();
-      showScreen('home');
-      const existing = new URLSearchParams(window.location.search).get('match');
-      if (existing) {
-        document.getElementById('match-link').textContent = 'Match: ' + existing;
-        startMatching(existing);
+      authScreen.style.display = 'none';
+      app.style.display = 'flex';
+      usernameEl.textContent = u.displayName;
+
+      // Fetch or initialize rating
+      const userRef = db.ref(`users/${u.uid}`);
+      const snapshot = await userRef.get();
+      if(snapshot.exists()){
+        userRating = snapshot.val().rating || 1000;
+      } else {
+        await userRef.set({displayName: u.displayName, rating: 1000});
       }
+      ratingEl.textContent = userRating;
+      selectMode(2);
+      loadLeaderboard();
+    } else {
+      authScreen.style.display = 'flex';
+      app.style.display = 'none';
     }
   });
-  function signIn() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
-  function signOut() { auth.signOut(); location.reload(); }
 
-  function showScreen(screen) {
-    ['home','game','leaderboard','settings'].forEach(s => document.getElementById('screen-'+s).classList.add('hidden'));
-    document.getElementById('screen-'+screen).classList.remove('hidden');
+  function signIn(){
+    auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+  }
+  function signOut(){
+    auth.signOut();
   }
 
-  async function loadLeaderboard() {
-    const snap = await db.ref('users').orderByChild('rating').limitToLast(20).get();
-    const list = [];
-    snap.forEach(c => list.push({ name: c.val().displayName, rating: c.val().rating }));
-    list.sort((a,b) => b.rating - a.rating);
-    const ct = document.getElementById('leaderboard'); ct.innerHTML = '';
-    list.forEach((u,i) => {
-      const div = document.createElement('div');
-      const bg = i < 3 ? ['bg-yellow-500','bg-gray-300 text-black','bg-yellow-700'][i] : 'bg-gray-700';
-      div.className = `flex justify-between p-2 rounded ${bg}`;
-      div.innerHTML = `<span>#${i+1}</span><span>${u.name}</span><span>${u.rating}</span>`;
-      ct.appendChild(div);
+  function selectMode(n){
+    mode = n;
+    modeButtons.forEach(btn => btn.classList.remove('active'));
+    document.getElementById(`mode-${n}`).classList.add('active');
+  }
+
+  function loadLeaderboard(){
+    db.ref('users').orderByChild('rating').limitToLast(20).once('value', snap => {
+      modalLeaderboard.innerHTML = '';
+      const users = [];
+      snap.forEach(child => users.push(child.val()));
+      users.sort((a,b)=>b.rating - a.rating);
+      users.forEach((u,i) => {
+        const d = document.createElement('div');
+        d.textContent = `#${i+1} ${u.displayName} — Rating: ${u.rating}`;
+        d.className = "mb-1";
+        modalLeaderboard.appendChild(d);
+      });
     });
   }
 
-  // Matching for 2-4 players
-  async function startMatching(code) {
-    gameId = code || new URLSearchParams(window.location.search).get('match') || Math.floor(1e7+Math.random()*9e7).toString();
-    history.replaceState(null,'','?match='+gameId);
-    document.getElementById('match-link').textContent = 'Match: '+gameId;
-    document.getElementById('modal').classList.remove('hidden');
-    const slotRef = db.ref('slots/'+gameId);
-    const snap = await slotRef.get();
-    if (!snap.exists()) {
-      await slotRef.set({ p1:user.uid });
-    }
-    slotRef.get().then(async s2 => {
-      const v = s2.val();
-      for (let i=1;i<=mode;i++){
-        const key='p'+i;
-        if (!v[key]) { await slotRef.update({ [key]:user.uid }); break; }
+  function startMatch(){
+    matchId = Math.floor(10000000 + Math.random()*90000000).toString();
+    matchLinkEl.textContent = `Match code: ${matchId}`;
+
+    modal.classList.add('active');
+    statusEl.textContent = '';
+
+    // Create or join match slot
+    const matchRef = db.ref(`matches/${matchId}`);
+
+    matchRef.transaction(current => {
+      if(current === null){
+        return {players: {[user.uid]: {name:user.displayName, order: 0}}, mode, started:false};
+      } else {
+        if(Object.keys(current.players).length < mode){
+          if(!current.players[user.uid]){
+            const order = Object.keys(current.players).length;
+            current.players[user.uid] = {name: user.displayName, order};
+          }
+          return current;
+        } else {
+          return; // full
+        }
       }
-    });
-    slotRef.on('value', snapv => {
-      const v = snapv.val()||{};
-      players = ['p1','p2','p3','p4'].filter(k=>v[k]).map(k=>v[k]);
-      if (players.length===mode) {
-        slotRef.off(); slotRef.remove(); initGame();
-      }
+    }).then(() => {
+      // Listen to players joining
+      matchRef.on('value', snapshot => {
+        const val = snapshot.val();
+        if(!val) return;
+
+        players = Object.entries(val.players).sort((a,b) => a[1].order - b[1].order).map(e=>e[0]);
+        if(players.length === mode && !val.started){
+          matchRef.update({started:true});
+          modal.classList.remove('active');
+          initGame();
+        } else {
+          // Show waiting players
+          modalLeaderboard.innerHTML = '';
+          players.forEach(uid => {
+            const name = val.players[uid].name;
+            const p = document.createElement('div');
+            p.textContent = name;
+            modalLeaderboard.appendChild(p);
+          });
+        }
+      });
     });
   }
 
   function initGame(){
-    document.getElementById('modal').classList.add('hidden');
-    scores = {}; players.forEach(p=>scores[p]=0);
-    renderPlayerLists(); showScreen('game'); renderBoard(); updateStatus();
+    currentPlayerIndex = 0;
+    scores = {};
+    players.forEach(uid => scores[uid] = 0);
+    lines.clear();
+
+    winnerMessage.textContent = '';
+    restartBtn.style.display = 'none';
+
+    // Setup grid for Dot & Box
+    createBoard();
+    updateStatus();
+
+    // Save initial state
+    const gameRef = db.ref(`games/${matchId}`);
+    gameRef.set({
+      scores,
+      lines: [],
+      currentPlayerIndex,
+      players
+    });
+
+    // Listen to moves & updates
+    gameRef.on('value', snap => {
+      const data = snap.val();
+      if(!data) return;
+      scores = data.scores || {};
+      lines = new Set(data.lines || []);
+      currentPlayerIndex = data.currentPlayerIndex;
+      updateBoard();
+      updateStatus();
+      checkGameOver();
+    });
   }
 
-  function renderPlayerLists(){
-    const top=document.getElementById('top-player-list'), bot=document.getElementById('bottom-player-list');
-    top.innerHTML=bot.innerHTML='';
-    const colors=['#4a90e2','#e94e77','#f5a623','#7ed321'];
-    if(players.length===2){
-      players.forEach((u,i)=>{
-        const div=document.createElement('div');
-        div.innerHTML=`<span class=\"avatar\" style=\"background:${colors[i]}\"></span>${u===user.uid?'You':'Opponent'}`;
-        bot.appendChild(div);
-      });
-    } else {
-      players.forEach((u,i)=>{
-        const container=i<2?top:bot;
-        const div=document.createElement('div');
-        div.innerHTML=`<span class=\"avatar\" style=\"background:${colors[i]}\"></span>${u===user.uid?'You':'Player '+(i+1)}`;
-        container.appendChild(div);
-      });
+  function createBoard(){
+    gameBoard.style.gridTemplateColumns = `repeat(${boardSize*2-1}, auto)`;
+    gameBoard.innerHTML = '';
+
+    for(let r=0; r<boardSize*2-1; r++){
+      for(let c=0; c<boardSize*2-1; c++){
+        if(r%2 === 0 && c%2 === 0){
+          const dot = document.createElement('div');
+          dot.className = 'dot';
+          gameBoard.appendChild(dot);
+        } else if(r%2 === 0 || c%2 === 0){
+          const line = document.createElement('div');
+          line.className = 'line ' + (r%2 === 0 ? 'horizontal' : 'vertical');
+          line.dataset.row = r;
+          line.dataset.col = c;
+          line.style.setProperty('--active-color', colors[currentPlayerIndex]);
+          line.addEventListener('click', () => onLineClick(r,c));
+          gameBoard.appendChild(line);
+        } else {
+          const box = document.createElement('div');
+          box.className = 'box';
+          box.dataset.row = r;
+          box.dataset.col = c;
+          gameBoard.appendChild(box);
+        }
+      }
     }
   }
 
-  function renderBoard(){
-    const gb=document.getElementById('game-board'); gb.innerHTML='';
-    const size=boardSize*2-1; gb.style.gridTemplateColumns=`repeat(${size},auto)`;
-    for(let r=0;r<size;r++){ for(let c=0;c<size;c++){
-      if(r%2===0&&c%2===0){ gb.appendChild(Object.assign(document.createElement('div'),{className:'dot'})); }
-      else if(r%2===0||c%2===0){
-        const ln=document.createElement('div'); ln.className='line '+(r%2===0?'horizontal':'vertical');
-        ln.dataset.key=`${r}-${c}`; ln.onclick=()=>selectLine(r,c);
-        gb.appendChild(ln);
-      } else {
-        const bx=document.createElement('div'); bx.className='box'; bx.dataset.key=`${r}-${c}`;
-        gb.appendChild(bx);
+  async function onLineClick(row, col){
+    const key = `${row}-${col}`;
+    if(lines.has(key)) return;
+    if(players[currentPlayerIndex] !== user.uid){
+      alert("It's not your turn!");
+      return;
+    }
+
+    lines.add(key);
+    updateLinesInDB();
+
+    // Check boxes completed
+    let scored = false;
+    const boxesCompleted = checkCompletedBoxes(row, col);
+    if(boxesCompleted.length){
+      scored = true;
+      boxesCompleted.forEach(box => {
+        scores[players[currentPlayerIndex]]++;
+      });
+      updateScoresInDB();
+    }
+
+    // Change turn only if no box completed
+    if(!scored){
+      currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+      updateCurrentPlayerInDB();
+    }
+  }
+
+  function checkCompletedBoxes(r,c){
+    const completed = [];
+    // Boxes are at odd-odd intersections
+    // For a line, check if any box adjacent is now fully surrounded by lines
+
+    function hasLine(rr,cc){
+      return lines.has(`${rr}-${cc}`);
+    }
+
+    function boxComplete(rr,cc){
+      return hasLine(rr-1,cc) && hasLine(rr+1,cc) && hasLine(rr,cc-1) && hasLine(rr,cc+1);
+    }
+
+    if(r%2===0){
+      // horizontal line, check box above and below
+      if(r>0 && c>0 && boxComplete(r-1,c)) completed.push([r-1,c]);
+      if(r < boardSize*2-2 && c>0 && boxComplete(r+1,c)) completed.push([r+1,c]);
+    } else {
+      // vertical line, check box left and right
+      if(c>0 && r>0 && boxComplete(r,c-1)) completed.push([r,c-1]);
+      if(c < boardSize*2-2 && r>0 && boxComplete(r,c+1)) completed.push([r,c+1]);
+    }
+    return completed;
+  }
+
+  function updateLinesInDB(){
+    db.ref(`games/${matchId}/lines`).set(Array.from(lines));
+  }
+  function updateScoresInDB(){
+    db.ref(`games/${matchId}/scores`).set(scores);
+  }
+  function updateCurrentPlayerInDB(){
+    db.ref(`games/${matchId}/currentPlayerIndex`).set(currentPlayerIndex);
+  }
+
+ function updateBoard(){  
+    // Update lines  
+    document.querySelectorAll('.line').forEach(line => {  
+      const key = `${line.dataset.row}-${line.dataset.col}`;  
+      if(lines.has(key)){  
+        line.classList.add('active');  
+        // Determine who drew the line by checking adjacent boxes or by game logic (for simplicity, use currentPlayer color)
+        // You can extend this by storing which player claimed which line if needed
+        let playerColor = colors[currentPlayerIndex];  
+        line.style.setProperty('--active-color', playerColor);  
+        line.style.backgroundColor = playerColor;  
+        line.style.boxShadow = `0 0 8px ${playerColor}`;  
+        line.style.cursor = 'default';  
+        line.replaceWith(line.cloneNode(true)); // Remove old listeners by replacing element
+      } else {  
+        line.classList.remove('active');  
+        line.style.backgroundColor = '#444';  
+        line.style.boxShadow = 'none';  
+        line.style.cursor = 'pointer';  
+        // Re-add click listener for active player turn
+        line.addEventListener('click', () => onLineClick(+line.dataset.row, +line.dataset.col));  
+      }  
+    });
+
+    // Update boxes color based on scores and ownership
+    document.querySelectorAll('.box').forEach(box => {
+      const r = +box.dataset.row;
+      const c = +box.dataset.col;
+
+      // Determine owner of box: check the 4 surrounding lines
+      function hasLine(rr,cc){
+        return lines.has(`${rr}-${cc}`);
       }
-    }}
-  }
-
-  function selectLine(r,c){
-    const key=`${r}-${c}`; if(lines.has(key))return; lines.add(key);
-    const el=document.querySelector(`.line[data-key=\\"${key}\\"]`);
-    el.style.background=['#4a90e2','#e94e77','#f5a623','#7ed321'][turn];
-    if(!checkBoxes(r,c)) turn=(turn+1)%players.length;
-    else if(isOver()) return endGame();
-    updateStatus();
-  }
-
-  function checkBoxes(r,c){ let claimed=false;
-    [[0,1],[0,-1],[1,0],[-1,0]].forEach(([dr,dc])=>{
-      const rr=r+dr,cc=c+dc;
-      if(rr%2&&cc%2){ const corners=[[rr-1,cc-1],[rr-1,cc+1],[rr+1,cc-1],[rr+1,cc+1]];
-        if(corners.every(([ar,ac])=>lines.has(`${ar}-${ac}`)&&lines.has(`${rr}-${ac}`))){
-          const box=document.querySelector(`.box[data-key=\\"${rr}-${cc}\\"]`);
-          if(!box.textContent){ box.textContent=turn+1; scores[players[turn]]++; claimed=true; }
+      if(hasLine(r-1,c) && hasLine(r+1,c) && hasLine(r,c-1) && hasLine(r,c+1)){
+        // Find which player owns this box by checking who scored it
+        // For simplicity: assign box color based on scores and order
+        // Ideally, you store box ownership in DB - here we guess based on scores
+        // This is a limitation, so color by last scoring player
+        let ownerIndex = null;
+        for(let i=0; i<players.length; i++){
+          // We can't perfectly assign here without ownership stored,
+          // so as a basic indicator color all boxes the current player's color
+          // You can improve this by saving box owners in DB.
+          // For now, assign the color of the player who scored last line (currentPlayerIndex)
+          ownerIndex = currentPlayerIndex;
         }
+        if(ownerIndex !== null){
+          box.style.backgroundColor = colors[ownerIndex];
+          box.style.color = '#000';
+        }
+      } else {
+        box.style.backgroundColor = '#2a2a2a';
+        box.style.color = 'white';
       }
-    }); return claimed;
+    });
   }
 
   function updateStatus(){
-    const st=document.getElementById('status'); st.textContent=`Player ${turn+1}'s turn`;
-    st.style.color=['#4a90e2','#e94e77','#f5a623','#7ed321'][turn];
+    if(!players.length) return;
+
+    let currentUid = players[currentPlayerIndex];
+    let currentName = 'Waiting...';
+    let turnClass = 'blue-turn';
+
+    if(currentUid){
+      currentName = (currentUid === user.uid) ? "Your turn" : `Turn: ${currentUid === user.uid ? "You" : currentUid}`;
+      const index = players.indexOf(currentUid);
+      turnClass = ['blue-turn','red-turn','orange-turn','green-turn'][index] || 'blue-turn';
+    }
+
+    statusEl.textContent = currentName;
+    statusEl.className = turnClass;
   }
 
-  function isOver(){ return Object.values(scores).reduce((a,b)=>a+b,0)===(boardSize-1)**2; }
-  function endGame(){
-    const st=document.getElementById('status'); st.textContent='Game Over';
-    const win=Object.entries(scores).sort((a,b)=>b[1]-a[1])[0][0];
-    st.textContent=`Winner: ${win===user.uid?'You':'Player '+(players.indexOf(win)+1)}`;
+  function checkGameOver(){
+    const totalBoxes = (boardSize - 1) * (boardSize - 1);
+    let totalScore = 0;
+    for(const uid of players){
+      totalScore += scores[uid] || 0;
+    }
+    if(totalScore >= totalBoxes){
+      // Game over
+      restartBtn.style.display = 'block';
+
+      // Determine winner(s)
+      let maxScore = Math.max(...Object.values(scores));
+      let winners = players.filter(uid => scores[uid] === maxScore);
+
+      if(winners.includes(user.uid)){
+        winnerMessage.textContent = "You won! 🎉";
+      } else {
+        winnerMessage.textContent = "Game Over! Winner: " + winners.map(w => w === user.uid ? "You" : w).join(", ");
+      }
+
+      // Update rating for current user
+      updateRating(winners);
+    } else {
+      winnerMessage.textContent = '';
+      restartBtn.style.display = 'none';
+    }
+  }
+
+  async function updateRating(winners){
+    if(!user) return;
+    const userRef = db.ref(`users/${user.uid}`);
+
+    const winnerCount = winners.length;
+    const isWinner = winners.includes(user.uid);
+    let delta = 0;
+
+    // Apply your rating system logic:
+    // 1st place +12 points, 2nd place +8 points, 3rd place -4 points, 4th place -8 points
+    // Here simplified for multiplayer, winner +12, others -4 or -8
+
+    if(isWinner){
+      delta = 12;
+    } else {
+      // If 2nd place and 3 or more players, +8 else negative
+      const userRank = getUserRank(user.uid);
+      if(userRank === 1) delta = 8;
+      else if(userRank === 2) delta = -4;
+      else delta = -8;
+    }
+
+    userRating += delta;
+    if(userRating < 0) userRating = 0;
+
+    ratingEl.textContent = userRating;
+
+    await userRef.update({rating: userRating});
+  }
+
+  function getUserRank(uid){
+    // Rank players by score descending
+    let rankArray = players.map(p => ({uid: p, score: scores[p] || 0}));
+    rankArray.sort((a,b) => b.score - a.score);
+    for(let i=0; i<rankArray.length; i++){
+      if(rankArray[i].uid === uid) return i;
+    }
+    return rankArray.length - 1;
+  }
+
+  function restartGame(){
+    if(!matchId) return;
+    db.ref(`games/${matchId}`).remove();
+    initGame();
   }
 </script>
+
 </body>
 </html>
+        
