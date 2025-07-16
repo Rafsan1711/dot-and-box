@@ -133,15 +133,41 @@
 
   // Matching for 2-4 players
   async function startMatching(code) {
-    gameId = code || new URLSearchParams(window.location.search).get('match') || Math.floor(1e7+Math.random()*9e7).toString();
-    history.replaceState(null,'','?match='+gameId);
-    document.getElementById('match-link').textContent = 'Match: '+gameId;
+    // Determine or create match code
+    gameId = code || new URLSearchParams(window.location.search).get('match') || Math.floor(1e7 + Math.random()*9e7).toString();
+    history.replaceState(null, '', '?match=' + gameId);
+    document.getElementById('match-link').textContent = 'Match: ' + gameId;
     document.getElementById('modal').classList.remove('hidden');
-    const slotRef = db.ref('slots/'+gameId);
+
+    const slotRef = db.ref('slots/' + gameId);
     const snap = await slotRef.get();
     if (!snap.exists()) {
-      await slotRef.set({ p1:user.uid });
+      // First player creates slot
+      await slotRef.set({ p1: user.uid });
+    } else {
+      // Subsequent player joins next available slot
+      const v = snap.val() || {};
+      const keys = ['p1','p2','p3','p4'];
+      for (let i = 0; i < mode; i++) {
+        const key = keys[i];
+        if (!v[key] && v[key] !== user.uid) {
+          await slotRef.update({ [key]: user.uid });
+          break;
+        }
+      }
     }
+
+    // Listen for full roster
+    slotRef.on('value', snapv => {
+      const v = snapv.val() || {};
+      players = ['p1','p2','p3','p4'].filter(k => v[k]).map(k => v[k]);
+      if (players.length === mode) {
+        slotRef.off();
+        slotRef.remove();
+        initGame();
+      }
+    });
+  }
     slotRef.get().then(async s2 => {
       const v = s2.val();
       for (let i=1;i<=mode;i++){
