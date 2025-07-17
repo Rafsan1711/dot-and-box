@@ -698,6 +698,41 @@
       playerIndex = players.indexOf(currentUser.uid);
       updateTurnStatus();
       renderGameBoard();
+
+      // Check if game finished (all boxes claimed)
+      const totalBoxes = gameData.mode * gameData.mode;
+      const boxesCount = Object.keys(gameData.boxes || {}).length;
+      if (boxesCount === totalBoxes) {
+        // Determine highest score
+        let maxScore = -Infinity;
+        players.forEach(uid => {
+          const score = gameData.players[uid].score || 0;
+          if (score > maxScore) maxScore = score;
+        });
+        const winners = players.filter(uid => (gameData.players[uid].score || 0) === maxScore);
+        // Construct winner message
+        if (winners.length === 1) {
+          const winnerName = gameData.players[winners[0]].username;
+          if (winners[0] === currentUser.uid) {
+            winnerMessage.textContent = 'You win!';
+          } else {
+            winnerMessage.textContent = winnerName + ' wins!';
+          }
+        } else {
+          // Tie
+          const winnerNames = winners.map(uid => gameData.players[uid].username);
+          if (winners.includes(currentUser.uid)) {
+            const otherNames = winnerNames.filter(name => name !== userData.username);
+            winnerMessage.textContent = 'Tie: You, ' + otherNames.join(', ');
+          } else {
+            winnerMessage.textContent = 'Tie: ' + winnerNames.join(', ');
+          }
+        }
+        restartBtn.style.display = 'block';
+        statusEl.textContent = '';
+        // Stop further updates
+        matchRef.off('value');
+      }
     });
   }
 
@@ -969,7 +1004,7 @@
 
   // Friend search handling
   friendSearchInput.addEventListener('input', () => {
-    const query = friendSearchInput.value.trim().toLowerCase();
+    const query = friendSearchInput.value.trim();
     if (query.length < 2) {
       clearSearchResults();
       return;
@@ -1102,4 +1137,4 @@ function setupInitialUI() {
 
 </script>
 </body>
-</html>
+  </html>
