@@ -374,7 +374,8 @@
 
         <div id="match-link" class="text-center mb-6 text-sm text-blue-400 break-all"></div>
 
-        <div id="status" class="blue-turn"></div>
+        <div id="status" class="blue-turn text-white"></div>
+        <div id="scores" class="text-center mb-4"></div>
 
         <div id="game-board" class="mx-auto grid gap-1" style="user-select:none;"></div>
 
@@ -432,7 +433,6 @@
   <script>
     // ================== FIREBASE CONFIGURATION ===================
     // তোমার Firebase config এখানে বসাও:
-
     const firebaseConfig = {
       apiKey: "AIzaSyB-5CakD79CthsI-_vcqblOCN1sXS6U8u8",
       authDomain: "dot-and-box-90d27.firebaseapp.com",
@@ -456,6 +456,7 @@
     const startBtn = document.getElementById('start-btn');
     const matchLinkEl = document.getElementById('match-link');
     const statusEl = document.getElementById('status');
+    const scoresEl = document.getElementById('scores');
     const gameBoard = document.getElementById('game-board');
     const restartBtn = document.getElementById('restart');
     const winnerMessage = document.getElementById('winner-message');
@@ -494,8 +495,6 @@
     let playerIndex = null; // 0-based index of current player in this match
     let matchId = null;
     let isMyTurn = false;
-    let linesState = {}; // track which lines are drawn
-    let boxesState = {}; // track boxes owners
     let players = []; // array of player userIds
     let playersInfo = {}; // userId -> { username, rating }
 
@@ -697,9 +696,10 @@
         playerIndex = players.indexOf(currentUser.uid);
         updateTurnStatus();
         renderGameBoard();
+        updateScores(); // update scoreboard
 
         // Check if game finished (all boxes claimed)
-        const totalBoxes = gameData.mode * gameData.mode;
+        const totalBoxes = gameData.mode * gameData.mode; 
         const boxesCount = Object.keys(gameData.boxes || {}).length;
         if (boxesCount === totalBoxes) {
           // Determine highest score
@@ -746,6 +746,21 @@
       // Color coding by player index
       const colors = ['blue-turn', 'red-turn', 'orange-turn', 'green-turn'];
       statusEl.className = colors[currentTurnIndex] || 'blue-turn';
+    }
+
+    // Update scoreboard display
+    function updateScores() {
+      if (!gameData) return;
+      let html = '';
+      players.forEach(uid => {
+        const p = gameData.players[uid];
+        const name = p.username;
+        const score = p.score || 0;
+        // get color
+        const color = getPlayerColor(uid);
+        html += `<span style="color: ${color}; font-weight: bold; margin: 0 10px;">${name}: ${score}</span>`;
+      });
+      scoresEl.innerHTML = html;
     }
 
     // Render the board with dots, lines, boxes
@@ -909,6 +924,7 @@
       winnerMessage.textContent = '';
       restartBtn.style.display = 'none';
       matchLinkEl.textContent = '';
+      scoresEl.innerHTML = '';
     }
 
     // =================== LEADERBOARD =======================
@@ -951,6 +967,9 @@
     }
 
     // ================== FRIENDS SYSTEM ======================
+    
+
+   
 
     // Load friends list
     async function loadFriends() {
