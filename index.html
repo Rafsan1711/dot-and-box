@@ -764,54 +764,66 @@
     }
 
     // Render the board with dots, lines, boxes
-function renderGameBoard() {
-  const mode = gameData.mode;
-  const boardSize = mode + 1;               // dots per row
-  gameBoard.innerHTML = "";
-  // grid-template-columns রিসেট
-  gameBoard.style.gridTemplateColumns = `repeat(${boardSize * 2 - 1}, auto)`;
-  // যে কোডটা স্ট্যান্ডঅ্যালোন createBoard এ ছিল, সেটাই এখানে ইউজ কর:
-  for (let row = 0; row < boardSize * 2 - 1; row++) {
-    for (let col = 0; col < boardSize * 2 - 1; col++) {
-      if (row % 2 === 0 && col % 2 === 0) {
-        // Dot
-        const dot = document.createElement("div");
-        dot.className = "dot";
-        gameBoard.appendChild(dot);
+    function renderGameBoard() {
+      if (!gameData) return;
+      const mode = gameData.mode;
+      const size = mode + 1; // grid size for dots
+      gameBoard.innerHTML = '';
+      gameBoard.style.gridTemplateColumns = `repeat(${size * 2 -1}, auto)`;
+      gameBoard.style.gridTemplateRows = `repeat(${size * 2 -1}, auto)`;
 
-      } else if (row % 2 === 0 || col % 2 === 0) {
-        // Line
-        const line = document.createElement("div");
-        line.className = "line " + (row % 2 === 0 ? "horizontal" : "vertical");
-        line.dataset.row = row;
-        line.dataset.col = col;
-        const key = `${row}-${col}`;
-        // যদি DB তে আগে থেকে আঁকা থাকে, active দেখাবে:
-        if (linesState[key]) {
-          line.classList.add("active");
-          line.style.backgroundColor = getPlayerColor(linesState[key]);
-        } else {
-          line.addEventListener("click", () => tryDrawLine(key));
-        }
-        gameBoard.appendChild(line);
+      const lines = gameData.lines || {};
+      const boxes = gameData.boxes || {};
 
-      } else {
-        // Box
-        const box = document.createElement("div");
-        box.className = "box";
-        const boxKey = `${(row-1)/2}-${(col-1)/2}`;
-        if (boxesState[boxKey] != null) {
-          const owner = boxesState[boxKey];
-          const idx = players.indexOf(owner) + 1;
-          box.classList.add(`player-${idx}`);
-          box.textContent = idx;
+      // Create grid elements
+      for (let row = 0; row < size * 2 - 1; row++) {
+        for (let col = 0; col < size * 2 - 1; col++) {
+          if (row % 2 === 0 && col % 2 === 0) {
+            // dot
+            const dot = document.createElement('div');
+            dot.className = 'dot';
+            gameBoard.appendChild(dot);
+          } else if (row % 2 === 0 && col % 2 === 1) {
+            // horizontal line slot
+            const lineKey = `h-${row/2}-${(col-1)/2}`;
+            const lineDiv = document.createElement('div');
+            lineDiv.className = 'line horizontal';
+            if (lines[lineKey]) {
+              lineDiv.classList.add('active');
+              lineDiv.style.backgroundColor = getPlayerColor(lines[lineKey]);
+            } else {
+              lineDiv.addEventListener('click', () => tryDrawLine(lineKey));
+              lineDiv.style.cursor = isMyTurn ? 'pointer' : 'default';
+            }
+            gameBoard.appendChild(lineDiv);
+          } else if (row % 2 === 1 && col % 2 === 0) {
+            // vertical line slot
+            const lineKey = `v-${(row-1)/2}-${col/2}`;
+            const lineDiv = document.createElement('div');
+            lineDiv.className = 'line vertical';
+            if (lines[lineKey]) {
+              lineDiv.classList.add('active');
+              lineDiv.style.backgroundColor = getPlayerColor(lines[lineKey]);
+            } else {
+              lineDiv.addEventListener('click', () => tryDrawLine(lineKey));
+              lineDiv.style.cursor = isMyTurn ? 'pointer' : 'default';
+            }
+            gameBoard.appendChild(lineDiv);
+          } else {
+            // box slot
+            const boxKey = `${(row-1)/2}-${(col-1)/2}`;
+            const boxDiv = document.createElement('div');
+            boxDiv.className = 'box';
+            if (boxes[boxKey] != null) {
+              const ownerIndex = players.indexOf(boxes[boxKey]);
+              boxDiv.classList.add('player-' + (ownerIndex + 1));
+              boxDiv.textContent = ownerIndex + 1;
+            }
+            gameBoard.appendChild(boxDiv);
+          }
         }
-        gameBoard.appendChild(box);
       }
     }
-  }
-}
-
 
     // Player color by index
     function getPlayerColor(uid) {
