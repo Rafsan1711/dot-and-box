@@ -252,7 +252,8 @@
     let playersInfo = {};
     let finished = false;
     let onlineUsers = {};
-    let challengeState = null; // For incoming challenge
+    let challengeState = null;
+    let matchCleanupScheduled = false;
 
     // ==== AUTH & USER ====
     auth.onAuthStateChanged(async user => {
@@ -311,6 +312,7 @@
       auth.signOut();
     }
 
+    // --- Enhanced Navigation with Match Cleanup ---
     function showScreen(name) {
       for (const key in screens) {
         screens[key].classList.toggle('hidden', key !== name);
@@ -324,6 +326,26 @@
       } else if (name === 'leaderboard') {
         renderLeaderboard();
       }
+      // --- Match cleanup logic ---
+      if (matchId && screens.home.classList.contains('hidden') && screens.leaderboard.classList.contains('hidden') &&
+          screens.friends.classList.contains('hidden') && screens.settings.classList.contains('hidden')) {
+        // (No screens shown, unlikely. Still, for safety.)
+        scheduleMatchCleanup();
+      } else if (matchId && name !== 'home') {
+        scheduleMatchCleanup();
+      }
+    }
+
+    // -- Match cleanup logic: Remove finished match from Firebase when leaving home screen --
+    function scheduleMatchCleanup() {
+      if (!matchId || matchCleanupScheduled) return;
+      matchCleanupScheduled = true;
+      // If match finished, remove it after a short delay (let UI update for all)
+      setTimeout(() => {
+        db.ref('matches/' + matchId).remove();
+        matchId = null;
+        matchCleanupScheduled = false;
+      }, 1200);
     }
 
     function selectMode(n) {
@@ -469,6 +491,8 @@
             restartBtn.style.display = 'block';
             statusEl.textContent = '';
             matchRef.off('value');
+            // --- Schedule match cleanup after showing result ---
+            scheduleMatchCleanup();
           }, 500);
         }
       });
@@ -766,12 +790,10 @@
     }
     function clearSearchResults() { searchResultsEl.innerHTML = ''; }
 
-    // --- Enhanced Friend Search ---
     friendSearchInput.addEventListener('input', async function() {
       const query = this.value.trim().toLowerCase();
       clearSearchResults();
       if (!query) return;
-      // Search all users whose username contains the query (not just prefix)
       const snap = await db.ref('users').get();
       if (!snap.exists()) return;
       snap.forEach(s => {
@@ -792,7 +814,6 @@
       });
     });
 
-    // --- Online Users Listener for friend screen ---
     function listenOnlineUsers() {
       db.ref('users').on('value', snap => {
         onlineUsers = {};
@@ -802,12 +823,10 @@
             onlineUsers[userSnap.key] = d.online ? true : false;
           });
         }
-        // update friends screen online status instantly
         if (!screens.friends.classList.contains('hidden')) loadFriends();
       });
     }
 
-    // --- Notification System (Friend Requests + Challenges) ---
     function listenFriendRequests() {
       db.ref('users/' + currentUser.uid + '/friendRequests').on('value', snap => {
         notificationList.innerHTML = '';
@@ -861,9 +880,7 @@
       finished = false;
     }
 
-    // --- Challenge System ---
     function sendChallenge(friendUid) {
-      // Send challenge notification to friend
       const challengeObj = {
         from: currentUser.uid,
         fromName: userData.username,
@@ -883,7 +900,6 @@
         for (const fromId in challenges) {
           const ch = challenges[fromId];
           if (ch.status === "pending") {
-            // Show modal
             challengeState = {fromId, challenge: ch};
             challengeInfo.innerHTML = `
               <div class="mb-2 font-bold text-lg">${ch.fromName} challenged you!</div>
@@ -894,7 +910,7 @@
             challengeAcceptBtn.onclick = ()=>acceptChallenge(fromId, ch);
             challengeDeclineBtn.onclick = ()=>declineChallenge(fromId);
             challengeModal.classList.add('active');
-            return; // Only one modal at a time
+            return;
           }
         }
         challengeModal.classList.remove('active');
@@ -902,19 +918,14 @@
     }
 
     async function acceptChallenge(fromId, ch) {
-      // Add self to participants
       if (!ch.participants.includes(currentUser.uid)) {
         ch.participants.push(currentUser.uid);
       }
-      // Update challenge status to accepted
       db.ref(`users/${auth.currentUser.uid}/challenges/${fromId}/status`).set('accepted');
       db.ref(`users/${fromId}/challenges/${auth.currentUser.uid}/status`).set('accepted');
-      // Optionally, start match with these participants (left for full implementation)
-      // Remove challenge after accept to clean up
       setTimeout(()=>{
         db.ref(`users/${auth.currentUser.uid}/challenges/${fromId}`).remove();
         challengeModal.classList.remove('active');
-        // Optionally, you could auto-create a match here
         alert('You accepted the challenge! Please arrange match with your friend.');
       },600);
     }
@@ -926,9 +937,8 @@
       },600);
     }
 
-    // Responsive re-render
     window.addEventListener("resize", ()=>{ renderGameBoard(); });
 
   </script>
 </body>
-  </html>
+</html>
