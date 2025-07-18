@@ -25,7 +25,6 @@
     #winner-message { font-size: 1.9rem; font-weight: 800; text-align: center; margin: 1.5rem 0; color: #00ff00; text-shadow: 0 0 6px #00ff00;}
     #restart { display: none; margin: 0 auto 2rem auto; padding: 12px 30px; font-size: 1.2rem; font-weight: 700; background: #555; border: none; border-radius: 10px; color: white; cursor: pointer; transition: background 0.3s;}
     #restart:hover { background: #777;}
-    /* Modal */
     #modal { position: fixed; inset: 0; background: rgba(0,0,0,0.75); display: none; align-items: center; justify-content: center; z-index: 1000; }
     #modal.active { display: flex; }
     #modal-content { background: #111; padding: 2rem; border-radius: 10px; max-width: 400px; width: 90%; color: white; text-align: center; }
@@ -59,7 +58,6 @@
     .notif-btn { cursor: pointer; font-size: 1.4rem; margin-left: 12px; user-select: none;}
     .notif-btn.accept { color: #22c55e;}
     .notif-btn.decline { color: #ef4444;}
-    /* Responsive Board */
     #game-board .board-grid {
       margin: 0 auto;
       display: grid;
@@ -67,7 +65,6 @@
       border-radius: 16px;
       box-shadow: 0 0 8px #222;
       gap: 0px;
-      /* These will be set from JS as inline style */
     }
     @media (max-width: 600px) {
       #game-board .board-grid {
@@ -212,7 +209,7 @@
     let isMyTurn = false;
     let players = [];
     let playersInfo = {};
-    let finished = false; // track if end shown
+    let finished = false;
 
     // === AUTH & USER ===
     auth.onAuthStateChanged(async user => {
@@ -289,7 +286,6 @@
       createOrJoinMatch(selectedMode);
     }
 
-    // Choose board size based on player count
     function getBoardSize(mode) {
       if (mode === 2) return 4;
       if (mode === 3) return 5;
@@ -297,7 +293,6 @@
       return 4;
     }
 
-    // Pass boardSize to match creation
     async function createOrJoinMatch(mode) {
       modal.classList.add('active');
       modalLeaderboard.innerHTML = '';
@@ -401,7 +396,7 @@
       matchId = id;
       const matchRef = db.ref('matches/' + id);
       finished = false;
-      matchRef.on('value', snapshot => {
+      matchRef.on('value', async snapshot => {
         if (!snapshot.exists()) return;
         gameData = snapshot.val();
         players = Object.keys(gameData.players || {});
@@ -411,25 +406,66 @@
         renderGameBoard();
         updateScores();
 
-        // --- GAME FINISH LOGIC ---
-        // Always show last move to everyone. Use a 'finished' flag to prevent multiple endings.
         const boardSize = gameData.boardSize || getBoardSize(gameData.mode);
         const totalBoxes = boardSize * boardSize;
         const boxesCount = Object.keys(gameData.boxes || {}).length;
+
         if (boxesCount === totalBoxes && !finished) {
           finished = true;
           setTimeout(() => {
             showWinner();
+            updateRatings(gameData.mode);
             restartBtn.style.display = 'block';
             statusEl.textContent = '';
             matchRef.off('value');
-          }, 500); // Wait for board to update for everyone
+          }, 500);
         }
       });
     }
 
+    // Rating logic
+    async function updateRatings(mode) {
+      // Prepare array of users and scores
+      const allScores = players.map(uid => ({uid, score: gameData.players[uid].score || 0}));
+      // Sort descending
+      allScores.sort((a,b) => b.score - a.score);
+      let ratingChanges = {};
+
+      // 2 players
+      if (mode === 2) {
+        ratingChanges[allScores[0].uid] = 12; // winner
+        ratingChanges[allScores[1].uid] = -4; // loser
+      }
+      // 3 players
+      else if (mode === 3) {
+        ratingChanges[allScores[0].uid] = 12; // winner
+        ratingChanges[allScores[1].uid] = 8;  // 2nd
+        ratingChanges[allScores[2].uid] = -4; // 3rd
+      }
+      // 4 players
+      else if (mode === 4) {
+        ratingChanges[allScores[0].uid] = 12; // winner
+        ratingChanges[allScores[1].uid] = 8;  // 2nd
+        ratingChanges[allScores[2].uid] = -8; // 3rd
+        ratingChanges[allScores[3].uid] = -8; // 4th
+      }
+
+      // Save to Firebase for all players
+      for (const uid in ratingChanges) {
+        const change = ratingChanges[uid];
+        const userRef = db.ref('users/' + uid + '/rating');
+        const snap = await userRef.get();
+        let oldRating = snap.exists() ? snap.val() : 1000;
+        let newRating = Math.max(0, oldRating + change); // never negative
+        await userRef.set(newRating);
+        // If current user, update UI
+        if (uid === currentUser.uid) {
+          ratingEl.textContent = newRating;
+        }
+      }
+    }
+
     function showWinner() {
-      // Determine highest score
       let maxScore = -Infinity;
       players.forEach(uid => {
         const score = gameData.players[uid].score || 0;
@@ -477,17 +513,14 @@
       scoresEl.innerHTML = html;
     }
 
-    // === PROFESSIONAL & RESPONSIVE BOARD RENDER ===
     function renderGameBoard() {
       if (!gameData) return;
       const boardSize = gameData.boardSize || getBoardSize(gameData.mode);
       const lines = gameData.lines || {};
       const boxes = gameData.boxes || {};
-      // Responsive cell size
-      let cellPx = 56; // default for desktop
+      let cellPx = 56;
       if (window.innerWidth < 600) cellPx = Math.max(28, Math.floor(window.innerWidth / (boardSize*2+2)));
       else if (boardSize >= 6) cellPx = 44;
-      // Main grid HTML
       let boardHTML = `<div class="board-grid" style="
         grid-template-columns: repeat(${boardSize*2+1}, ${cellPx}px);
         grid-template-rows: repeat(${boardSize*2+1}, ${cellPx}px);
@@ -618,7 +651,6 @@
       finished = false;
     }
 
-    // === LEADERBOARD ===
     let leaderboardData = {};
     async function listenLeaderboard() {
       db.ref('users').orderByChild('rating').limitToLast(100).on('value', snapshot => {
@@ -653,7 +685,6 @@
       });
     }
 
-    // === FRIEND SYSTEM ===
     async function loadFriends() {
       if (!currentUser) return;
       friendsListEl.innerHTML = '';
@@ -714,7 +745,6 @@
       });
     });
 
-    // === FRIEND REQUESTS ===
     function listenFriendRequests() {
       db.ref('users/' + currentUser.uid + '/friendRequests').on('value', snap => {
         notificationList.innerHTML = '';
@@ -768,9 +798,7 @@
       finished = false;
     }
 
-    // Responsive re-render
     window.addEventListener("resize", ()=>{ renderGameBoard(); });
-
   </script>
 </body>
-  </html>
+          </html>
