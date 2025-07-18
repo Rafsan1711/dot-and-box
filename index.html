@@ -1,944 +1,818 @@
 <!DOCTYPE html>
-<html lang="en" class="bg-gray-900 text-white">
+<html lang="en" class="bg-gray-50 text-gray-900" >
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Dot and Box Online Multiplayer</title>
+  <title>Online Bookstore</title>
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body { font-family: 'Inter', sans-serif; }
-    .dot { width: 16px; height: 16px; background: white; border-radius: 50%; margin: auto; }
-    .line { background-color: #444; cursor: pointer; transition: background 0.3s, box-shadow 0.3s; }
-    .line.horizontal { height: 7px; margin: auto; }
-    .line.vertical { width: 7px; margin: auto; }
-    .line.active { cursor: default; }
-    .box { background: #2a2a2a; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.5rem; color: white; user-select: none; transition: background 0.3s; }
-    .player-1 { background: #4a90e2; }
-    .player-2 { background: #e94e77; }
-    .player-3 { background: #f5a623; }
-    .player-4 { background: #7ed321; }
-    #status { font-size: 1.3rem; font-weight: bold; margin: 1rem 0; text-align: center; padding: 0.7rem 1.4rem; border-radius: 8px; }
-    .blue-turn { background: #4a90e2; box-shadow: 0 0 12px #4a90e2;}
-    .red-turn { background: #e94e77; box-shadow: 0 0 12px #e94e77;}
-    .orange-turn { background: #f5a623; box-shadow: 0 0 12px #f5a623;}
-    .green-turn { background: #7ed321; box-shadow: 0 0 12px #7ed321;}
-    #winner-message { font-size: 1.9rem; font-weight: 800; text-align: center; margin: 1.5rem 0; color: #00ff00; text-shadow: 0 0 6px #00ff00;}
-    #restart { display: none; margin: 0 auto 2rem auto; padding: 12px 30px; font-size: 1.2rem; font-weight: 700; background: #555; border: none; border-radius: 10px; color: white; cursor: pointer; transition: background 0.3s;}
-    #restart:hover { background: #777;}
-    #modal { position: fixed; inset: 0; background: rgba(0,0,0,0.75); display: none; align-items: center; justify-content: center; z-index: 1000; }
-    #modal.active { display: flex; }
-    #modal-content { background: #111; padding: 2rem; border-radius: 10px; max-width: 400px; width: 90%; color: white; text-align: center; }
-    .mode-btn { transition: background 0.3s, color 0.3s; }
-    .mode-btn.active { background: #4ade80; color: black;}
-    .loader { border: 5px solid #444; border-top: 5px solid #00ff00; border-radius: 50%; width: 50px; height: 50px; animation: spin 1.5s linear infinite; margin: 0 auto 1rem auto; }
-    @keyframes spin { 0% {transform: rotate(0deg);} 100% {transform: rotate(360deg);} }
-    .bottom-nav { border-top: 1px solid #555; display: flex; justify-content: space-around; background: #121212; }
-    .bottom-nav button { flex-grow: 1; padding: 1rem 0; font-size: 1.1rem; color: #bbb; background: none; border: none; cursor: pointer; transition: background 0.3s;}
-    .bottom-nav button.active, .bottom-nav button:hover { background: #222; color: white; }
-    #friend-search { width: 100%; max-width: 400px; margin: 0 auto 1rem auto; padding: 10px 15px; font-size: 1.1rem; border-radius: 12px; border: none; outline: none; background: #222; color: white; box-shadow: 0 0 10px #4a90e2; transition: box-shadow 0.3s; }
-    #friend-search:focus { box-shadow: 0 0 15px #60a5fa; }
-    #friends-list, #search-results { max-width: 400px; margin: 0 auto; margin-bottom: 1rem; }
-    .friend-item, .search-item { display: flex; align-items: center; background: #1e1e2f; padding: 10px 15px; border-radius: 12px; margin-bottom: 10px; transition: background 0.3s; }
-    .friend-item:hover, .search-item:hover { background: #33334d; }
-    .friend-pic, .search-pic { width: 48px; height: 48px; border-radius: 50%; margin-right: 12px; object-fit: cover; border: 2px solid #4a90e2; }
-    .friend-info, .search-info { flex-grow: 1; }
-    .friend-name, .search-name { font-weight: 700; font-size: 1.1rem; margin-bottom: 2px; }
-    .friend-rating, .search-rating { font-size: 0.9rem; color: #60a5fa; }
-    .add-btn { width: 36px; height: 36px; background: #4ade80; border-radius: 8px; color: black; font-weight: 900; font-size: 1.8rem; line-height: 36px; text-align: center; cursor: pointer; user-select: none; transition: background 0.3s; }
-    .add-btn:hover { background: #22c55e;}
-    .remove-btn { width: 36px; height: 36px; background: #ef4444; border-radius: 8px; color: white; font-weight: 900; font-size: 1.6rem; line-height: 36px; text-align: center; cursor: pointer; user-select: none; transition: background 0.3s; }
-    .remove-btn:hover { background: #b91c1c; }
-    #notification-bell { position: fixed; top: 12px; right: 20px; font-size: 1.8rem; cursor: pointer; color: #60a5fa; z-index: 1100; user-select: none; transition: color 0.3s;}
-    #notification-bell:hover { color: #38bdf8;}
-    #notification-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 1200; }
-    #notification-modal.active { display: flex;}
-    #notification-content { background: #111; padding: 1.5rem 2rem; border-radius: 10px; max-width: 420px; width: 90%; color: white; max-height: 70vh; overflow-y: auto;}
-    .notification-item { background: #222; padding: 10px 15px; border-radius: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;}
-    .notification-text { font-weight: 600;}
-    .notif-btn { cursor: pointer; font-size: 1.4rem; margin-left: 12px; user-select: none;}
-    .notif-btn.accept { color: #22c55e;}
-    .notif-btn.decline { color: #ef4444;}
-    /* Responsive Board */
-    #game-board .board-grid {
-      margin: 0 auto;
-      display: grid;
-      background: #1e1e1e;
-      border-radius: 16px;
-      box-shadow: 0 0 8px #222;
-      gap: 0px;
-    }
-    @media (max-width: 600px) {
-      #game-board .board-grid {
-        max-width: 95vw;
-      }
-      .box, .dot, .line.horizontal, .line.vertical { font-size: 1.1rem !important; }
-    }
-    /* Friend online status badge */
-    .online-badge {
-      display: inline-block;
-      width: 11px;
-      height: 11px;
-      border-radius: 50%;
-      background: #22c55e;
-      margin-left: 8px;
-      border: 2px solid #222;
-    }
-    .offline-badge {
-      display: inline-block;
-      width: 11px;
-      height: 11px;
-      border-radius: 50%;
-      background: #d1d5db;
-      margin-left: 8px;
-      border: 2px solid #222;
-    }
-    /* Challenge modal */
-    #challenge-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 9999;}
-    #challenge-modal.active { display: flex; }
-    #challenge-content { background: #111; padding: 2rem; border-radius: 16px; max-width: 400px; width: 90%; color: white; text-align: center;}
-    .challenge-btn { margin: 0 8px; padding: 10px 24px; border-radius: 8px; font-weight: bold; font-size: 1rem; border: none; cursor: pointer; }
-    .challenge-accept { background: #22c55e; color: #fff;}
-    .challenge-decline { background: #ef4444; color: #fff;}
-    .challenge-accept:hover { background: #16a34a;}
-    .challenge-decline:hover { background: #b91c1c;}
-  </style>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 </head>
 <body class="min-h-screen flex flex-col">
 
-  <div id="notification-bell" title="Friend Requests">🔔</div>
-  <div id="notification-modal">
-    <div id="notification-content">
-      <h2 class="text-2xl font-bold mb-4">Notifications</h2>
-      <div id="notification-list"></div>
-      <button onclick="closeNotificationModal()" class="mt-4 px-5 py-2 bg-red-600 rounded text-white font-semibold hover:bg-red-700">Close</button>
-    </div>
-  </div>
-  <!-- Challenge Modal -->
-  <div id="challenge-modal">
-    <div id="challenge-content">
-      <div id="challenge-info" class="mb-4"></div>
-      <button id="challenge-accept-btn" class="challenge-btn challenge-accept">Accept</button>
-      <button id="challenge-decline-btn" class="challenge-btn challenge-decline">Decline</button>
-    </div>
-  </div>
+  <!-- AUTH SECTION -->
+  <main id="auth-section" class="max-w-md mx-auto mt-12 p-6 bg-white rounded shadow-md">
+    <h1 class="text-3xl font-bold mb-6 text-center">Welcome to BookStore</h1>
 
-  <div id="auth-screen" class="flex-grow flex flex-col items-center justify-center p-4">
-    <h1 class="text-5xl font-extrabold mb-8">Dot and Box Online</h1>
-    <button id="signin-btn" class="bg-blue-600 hover:bg-blue-700 px-8 py-3 rounded-lg font-semibold shadow" onclick="signIn()">Sign in with Google</button>
-  </div>
+    <!-- Register Form -->
+    <form id="register-form" class="mb-4 hidden">
+      <h2 class="text-xl font-semibold mb-3">Register</h2>
+      <input id="reg-email" type="email" placeholder="Email" required class="w-full p-2 mb-2 border rounded"/>
+      <input id="reg-password" type="password" placeholder="Password" required class="w-full p-2 mb-2 border rounded"/>
+      <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-2 rounded">Register</button>
+      <p class="mt-3 text-center text-sm">Already have an account? <button id="show-login" type="button" class="text-blue-600 hover:underline">Login</button></p>
+    </form>
 
-  <div id="app" class="hidden flex-grow flex flex-col">
-    <header class="flex justify-between items-center p-4 border-b border-gray-700 relative">
-      <div><span id="username" class="font-bold text-xl"></span> | Rating: <span id="rating" class="font-semibold">0</span></div>
-      
+    <!-- Login Form -->
+    <form id="login-form" class="mb-4">
+      <h2 class="text-xl font-semibold mb-3">Login</h2>
+      <input id="login-email" type="email" placeholder="Email" required class="w-full p-2 mb-2 border rounded"/>
+      <input id="login-password" type="password" placeholder="Password" required class="w-full p-2 mb-2 border rounded"/>
+      <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white p-2 rounded">Login</button>
+      <p class="mt-3 text-center text-sm">Don't have an account? <button id="show-register" type="button" class="text-green-600 hover:underline">Register</button></p>
+    </form>
+
+    <!-- Google Sign-in -->
+    <div class="text-center mt-4">
+      <button id="google-signin" class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 48 48"><path fill="#fbc02d" d="M43.611 20.083h-1.84v-.082H24v8.001h11.18c-1.05 5.367-5.583 9.2-11.18 9.2-6.633 0-12-5.367-12-12s5.367-12 12-12c3.063 0 5.83 1.177 7.934 3.101l5.651-5.653C34.845 7.514 29.712 6 24 6 12.954 6 4 14.954 4 26s8.954 20 20 20c11.046 0 20-8.954 20-20 0-1.34-.14-2.647-.389-3.917z"/></svg>
+        Sign in with Google
+      </button>
+    </div>
+  </main>
+
+  <!-- APP SECTION -->
+  <section id="app-section" class="hidden flex-grow flex flex-col max-w-6xl mx-auto p-4 space-y-6">
+
+    <!-- HEADER -->
+    <header class="flex justify-between items-center border-b pb-4">
+      <h1 class="text-4xl font-extrabold tracking-tight">Online Bookstore</h1>
+      <div>
+        <button id="logout-btn" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Logout</button>
+      </div>
     </header>
-    <main class="flex-grow overflow-auto p-4">
-      <section id="screen-home" class="space-y-6">
-        <div class="flex justify-center space-x-4 mb-6">
-          <button id="mode-2" class="mode-btn px-5 py-2 border border-white rounded" onclick="selectMode(2)">2 Players</button>
-          <button id="mode-3" class="mode-btn px-5 py-2 border border-white rounded" onclick="selectMode(3)">3 Players</button>
-          <button id="mode-4" class="mode-btn px-5 py-2 border border-white rounded" onclick="selectMode(4)">4 Players</button>
-        </div>
-        <div class="flex justify-center mb-6">
-          <button id="start-btn" class="bg-green-600 hover:bg-green-700 px-8 py-3 rounded-lg font-semibold" onclick="startMatch()">Start Online Game</button>
-        </div>
-        <div id="match-link" class="text-center mb-6 text-sm text-blue-400 break-all"></div>
-        <div id="status" class="blue-turn text-white"></div>
-        <div id="scores" class="text-center mb-4"></div>
-        <div id="game-board" class="mx-auto mt-2 mb-2" style="user-select:none;"></div>
-        <button id="restart" onclick="restartGame()">Restart Game</button>
-        <div id="winner-message"></div>
-      </section>
-      <section id="screen-leaderboard" class="hidden">
-        <h2 class="text-3xl font-bold mb-6">Leaderboard</h2>
-        <div id="leaderboard-list" class="space-y-2 max-h-96 overflow-y-auto"></div>
-      </section>
-      <section id="screen-friends" class="hidden">
-        <h2 class="text-3xl font-bold mb-6 text-center">Friends</h2>
-        <input type="text" id="friend-search" placeholder="Search username..." autocomplete="off" />
-        <div id="search-results"></div>
-        <div id="friends-list"></div>
-      </section>
-      <section id="screen-settings" class="hidden">
-        <h2 class="text-3xl font-bold mb-6">Settings</h2>
-        <button onclick="signOut()" class="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-semibold">Sign Out</button>
-      </section>
-    </main>
-    <nav class="bottom-nav">
-      <button id="nav-home" onclick="showScreen('home')" class="active">🏠<br><small>Home</small></button>
-      <button id="nav-leaderboard" onclick="showScreen('leaderboard')">⭐<br><small>Leaderboard</small></button>
-      <button id="nav-friends" onclick="showScreen('friends')">👥<br><small>Friends</small></button>
-      <button id="nav-settings" onclick="showScreen('settings')">⚙️<br><small>Settings</small></button>
+
+    <!-- NAVIGATION -->
+    <nav class="flex space-x-4 border-b pb-2">
+      <button data-section="home" class="nav-btn px-4 py-2 font-semibold border-b-2 border-blue-600 text-blue-600">Home</button>
+      <button data-section="wishlist" class="nav-btn px-4 py-2 font-semibold hover:text-blue-600">Wishlist</button>
+      <button data-section="cart" class="nav-btn px-4 py-2 font-semibold hover:text-blue-600">Cart</button>
     </nav>
-  </div>
 
-  <div id="modal">
-    <div id="modal-content">
-      <h2 class="text-2xl mb-4">Waiting for other players...</h2>
-      <div class="loader"></div>
-      <p id="players-found" class="mb-4 font-semibold text-lg">Players found: 1/<span id="total-players">2</span></p>
-      <h3 class="mt-2 text-xl font-bold">Current Leaderboard</h3>
-      <div id="modal-leaderboard" class="max-h-48 overflow-y-auto text-left text-sm"></div>
+    <!-- SEARCH BAR -->
+    <div class="mt-4">
+      <input type="text" id="search-input" placeholder="Search books by name..." class="w-full p-2 border rounded" />
+      <div id="search-results" class="mt-2 bg-white rounded shadow max-h-60 overflow-auto hidden"></div>
     </div>
+
+    <!-- SECTIONS -->
+    <div id="sections" class="flex-grow overflow-auto">
+
+      <!-- HOME SECTION -->
+      <section id="home-section" class="pt-6">
+        <!-- Owner controls -->
+        <div id="owner-controls" class="mb-6 space-x-4 hidden">
+          <button id="add-category-btn" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">Add Category</button>
+          <button id="add-book-btn" class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700">Add Book</button>
+        </div>
+
+        <div id="categories-container" class="space-y-8">
+          <!-- Categories and books go here -->
+        </div>
+      </section>
+
+      <!-- WISHLIST SECTION -->
+      <section id="wishlist-section" class="hidden pt-6">
+        <h2 class="text-2xl font-semibold mb-4">Your Wishlist</h2>
+        <div id="wishlist-container" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
+      </section>
+
+      <!-- CART SECTION -->
+      <section id="cart-section" class="hidden pt-6">
+        <h2 class="text-2xl font-semibold mb-4">Your Cart</h2>
+        <div id="cart-container" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
+      </section>
+
+      <!-- BOOK DETAIL SECTION (hidden by default) -->
+      <section id="book-detail-section" class="hidden pt-6 max-w-xl mx-auto">
+        <button id="back-home-btn" class="mb-4 text-blue-600 hover:underline">&larr; Back to Home</button>
+        <div class="bg-white rounded shadow p-6">
+          <img id="detail-thumbnail" src="" alt="Book thumbnail" class="w-full h-72 object-contain mb-4 mx-auto" />
+          <h2 id="detail-title" class="text-3xl font-bold mb-2"></h2>
+          <h3 id="detail-author" class="text-xl text-gray-700 mb-4"></h3>
+
+          <h4 class="text-lg font-semibold mb-2">Comments</h4>
+          <div id="comments-list" class="mb-4 max-h-40 overflow-auto border p-2 rounded bg-gray-50"></div>
+
+          <form id="comment-form" class="flex gap-2">
+            <input id="comment-input" type="text" placeholder="Add a comment..." required class="flex-grow p-2 border rounded" />
+            <button type="submit" class="bg-blue-600 text-white px-4 rounded hover:bg-blue-700">Post</button>
+          </form>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- MODAL BACKDROP -->
+  <div id="modal-bg" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div id="modal" class="bg-white rounded shadow-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto"></div>
   </div>
 
-  <script>
-    // ==== FIREBASE CONFIGURATION ====
-    const firebaseConfig = {
-      apiKey: "AIzaSyB-5CakD79CthsI-_vcqblOCN1sXS6U8u8",
-      authDomain: "dot-and-box-90d27.firebaseapp.com",
-      databaseURL: "https://dot-and-box-90d27-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "dot-and-box-90d27",
-      storageBucket: "dot-and-box-90d27.appspot.com",
-      messagingSenderId: "913945926983",
-      appId: "1:913945926983:web:b4c00c2cffff5b6fa7c062"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.database();
+<script>
+  // Firebase config (এখানে তোমার প্রকৃত ফায়ারবেস কনফিগ বসাও)
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_AUTH_DOMAIN",
+    databaseURL: "YOUR_DATABASE_URL",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_STORAGE_BUCKET",
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
 
-    // UI Elements
-    const authScreen = document.getElementById('auth-screen');
-    const app = document.getElementById('app');
-    const usernameEl = document.getElementById('username');
-    const ratingEl = document.getElementById('rating');
-    const modeButtons = [2,3,4].map(n => document.getElementById(`mode-${n}`));
-    const startBtn = document.getElementById('start-btn');
-    const matchLinkEl = document.getElementById('match-link');
-    const statusEl = document.getElementById('status');
-    const scoresEl = document.getElementById('scores');
-    const gameBoard = document.getElementById('game-board');
-    const restartBtn = document.getElementById('restart');
-    const winnerMessage = document.getElementById('winner-message');
-    const modal = document.getElementById('modal');
-    const modalLeaderboard = document.getElementById('modal-leaderboard');
-    const playersFoundEl = document.getElementById('players-found');
-    const totalPlayersEl = document.getElementById('total-players');
-    const notificationBell = document.getElementById('notification-bell');
-    const notificationModal = document.getElementById('notification-modal');
-    const notificationList = document.getElementById('notification-list');
-    const friendSearchInput = document.getElementById('friend-search');
-    const friendsListEl = document.getElementById('friends-list');
-    const searchResultsEl = document.getElementById('search-results');
-    const challengeModal = document.getElementById('challenge-modal');
-    const challengeInfo = document.getElementById('challenge-info');
-    const challengeAcceptBtn = document.getElementById('challenge-accept-btn');
-    const challengeDeclineBtn = document.getElementById('challenge-decline-btn');
-    const screens = {
-      home: document.getElementById('screen-home'),
-      leaderboard: document.getElementById('screen-leaderboard'),
-      friends: document.getElementById('screen-friends'),
-      settings: document.getElementById('screen-settings'),
-    };
-    const navButtons = {
-      home: document.getElementById('nav-home'),
-      leaderboard: document.getElementById('nav-leaderboard'),
-      friends: document.getElementById('nav-friends'),
-      settings: document.getElementById('nav-settings'),
-    };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.database();
 
-    // GLOBALS
-    let currentUser = null;
-    let userData = null;
-    let selectedMode = 2;
-    let gameData = null;
-    let playerIndex = null;
-    let matchId = null;
-    let isMyTurn = false;
-    let players = [];
-    let playersInfo = {};
-    let finished = false;
-    let onlineUsers = {};
-    let challengeState = null;
-    let matchCleanupScheduled = false;
+  const OWNER_EMAIL = "18272872@gmail.com";
 
-    // ==== AUTH & USER ====
-    auth.onAuthStateChanged(async user => {
-      if (user) {
-        currentUser = user;
-        await loadUserData();
-        setOnlineStatus(true);
-        authScreen.style.display = 'none';
-        app.classList.remove('hidden');
-        showScreen('home');
-        setupInitialUI();
-        listenFriendRequests();
-        listenChallenges();
-        listenLeaderboard();
-        listenOnlineUsers();
-        window.addEventListener("beforeunload", ()=>setOnlineStatus(false));
-      } else {
-        setOnlineStatus(false);
-        currentUser = null;
-        userData = null;
-        app.classList.add('hidden');
-        authScreen.style.display = 'flex';
+  // DOM Elements
+  const authSection = document.getElementById('auth-section');
+  const appSection = document.getElementById('app-section');
+  const logoutBtn = document.getElementById('logout-btn');
+
+  const registerForm = document.getElementById('register-form');
+  const loginForm = document.getElementById('login-form');
+  const showRegisterBtn = document.getElementById('show-register');
+  const showLoginBtn = document.getElementById('show-login');
+
+  const googleSignInBtn = document.getElementById('google-signin');
+
+  const navButtons = document.querySelectorAll('.nav-btn');
+  const sections = {
+    home: document.getElementById('home-section'),
+    wishlist: document.getElementById('wishlist-section'),
+    cart: document.getElementById('cart-section'),
+    bookDetail: document.getElementById('book-detail-section')
+  };
+
+  const ownerControls = document.getElementById('owner-controls');
+  const addCategoryBtn = document.getElementById('add-category-btn');
+  const addBookBtn = document.getElementById('add-book-btn');
+
+  const categoriesContainer = document.getElementById('categories-container');
+  const wishlistContainer = document.getElementById('wishlist-container');
+  const cartContainer = document.getElementById('cart-container');
+
+  const modalBg = document.getElementById('modal-bg');
+  const modal = document.getElementById('modal');
+
+  const searchInput = document.getElementById('search-input');
+  const searchResults = document.getElementById('search-results');
+
+  // Book Detail Elements
+  const backHomeBtn = document.getElementById('back-home-btn');
+  const detailThumbnail = document.getElementById('detail-thumbnail');
+  const detailTitle = document.getElementById('detail-title');
+  const detailAuthor = document.getElementById('detail-author');
+  const commentsList = document.getElementById('comments-list');
+  const commentForm = document.getElementById('comment-form');
+  const commentInput = document.getElementById('comment-input');
+
+  let currentUser = null;
+  let currentSection = 'home';
+  let currentBookId = null;
+
+  // Show Register/Login toggle
+  showRegisterBtn.addEventListener('click', () => {
+    loginForm.classList.add('hidden');
+    registerForm.classList.remove('hidden');
+  });
+  showLoginBtn.addEventListener('click', () => {
+    registerForm.classList.add('hidden');
+    loginForm.classList.remove('hidden');
+  });
+
+  // Register handler
+  registerForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    const email = document.getElementById('reg-email').value.trim();
+    const password = document.getElementById('reg-password').value;
+    try {
+      const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+      await userCredential.user.sendEmailVerification();
+      alert('Verification email sent. Please verify your email before login.');
+      registerForm.reset();
+      registerForm.classList.add('hidden');
+      loginForm.classList.remove('hidden');
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+
+  // Login handler
+  loginForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    try {
+      const userCredential = await auth.signInWithEmailAndPassword(email, password);
+      if (!userCredential.user.emailVerified) {
+        alert('Please verify your email before logging in.');
+        await auth.signOut();
+        return;
       }
+      loginForm.reset();
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+
+  // Google sign-in
+  googleSignInBtn.addEventListener('click', async () => {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    try {
+      const result = await auth.signInWithPopup(provider);
+      currentUser = result.user;
+      if (!currentUser.emailVerified) {
+        await currentUser.sendEmailVerification();
+        alert('Verification email sent to your Google account email. Please verify to continue.');
+        await auth.signOut();
+      }
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+
+  // Logout
+  logoutBtn.addEventListener('click', () => {
+    auth.signOut();
+  });
+
+  // Navigation buttons
+  navButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      navButtons.forEach(b => b.classList.remove('border-blue-600', 'text-blue-600'));
+      btn.classList.add('border-blue-600', 'text-blue-600');
+      changeSection(btn.dataset.section);
     });
+  });
 
-    async function loadUserData() {
-      if (!currentUser) return;
-      const snapshot = await db.ref('users/' + currentUser.uid).get();
-      if (snapshot.exists()) {
-        userData = snapshot.val();
-      } else {
-        userData = {
-          username: currentUser.displayName || 'Anonymous',
-          rating: 1000,
-          friends: {},
-          friendRequests: {},
-          online: false,
-        };
-        await db.ref('users/' + currentUser.uid).set(userData);
-      }
-      usernameEl.textContent = userData.username;
-      ratingEl.textContent = userData.rating || 0;
-    }
+  // Change visible section function
+  function changeSection(sectionName) {
+    Object.values(sections).forEach(sec => sec.classList.add('hidden'));
+    sections[sectionName].classList.remove('hidden');
+    currentSection = sectionName;
 
-    function setOnlineStatus(status) {
-      if (!auth.currentUser) return;
-      db.ref('users/' + auth.currentUser.uid + '/online').set(status);
+    if(sectionName === 'home'){
+      loadCategoriesAndBooks();
+      searchResults.classList.add('hidden');
     }
+    if(sectionName === 'wishlist'){
+      loadWishlist();
+    }
+    if(sectionName === 'cart'){
+      loadCart();
+    }
+    if(sectionName === 'bookDetail'){
+      // no extra action now
+    }
+  }
 
-    function signIn() {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      auth.signInWithPopup(provider);
-    }
-    function signOut() {
-      setOnlineStatus(false);
-      auth.signOut();
-    }
+  // Modal helpers
+  function showModal(contentHtml) {
+    modal.innerHTML = contentHtml;
+    modalBg.classList.remove('hidden');
+  }
+  function closeModal() {
+    modalBg.classList.add('hidden');
+    modal.innerHTML = '';
+  }
+  modalBg.addEventListener('click', e => {
+    if(e.target === modalBg) closeModal();
+  });
 
-    // --- Enhanced Navigation with Match Cleanup ---
-    function showScreen(name) {
-      for (const key in screens) {
-        screens[key].classList.toggle('hidden', key !== name);
-      }
-      for (const key in navButtons) {
-        navButtons[key].classList.toggle('active', key === name);
-      }
-      if (name === 'friends') {
-        loadFriends();
-        clearSearchResults();
-      } else if (name === 'leaderboard') {
-        renderLeaderboard();
-      }
-      // --- Match cleanup logic ---
-      if (matchId && screens.home.classList.contains('hidden') && screens.leaderboard.classList.contains('hidden') &&
-          screens.friends.classList.contains('hidden') && screens.settings.classList.contains('hidden')) {
-        // (No screens shown, unlikely. Still, for safety.)
-        scheduleMatchCleanup();
-      } else if (matchId && name !== 'home') {
-        scheduleMatchCleanup();
-      }
-    }
+  // Load categories and books
+  async function loadCategoriesAndBooks(){
+    categoriesContainer.innerHTML = 'Loading...';
+    try {
+      const snapshot = await db.ref('categories').once('value');
+      const categories = snapshot.val() || {};
+      categoriesContainer.innerHTML = '';
 
-    // -- Match cleanup logic: Remove finished match from Firebase when leaving home screen --
-    function scheduleMatchCleanup() {
-      if (!matchId || matchCleanupScheduled) return;
-      matchCleanupScheduled = true;
-      // If match finished, remove it after a short delay (let UI update for all)
-      setTimeout(() => {
-        db.ref('matches/' + matchId).remove();
-        matchId = null;
-        matchCleanupScheduled = false;
-      }, 1200);
-    }
+      for(const [catId, catName] of Object.entries(categories)){
+        // Category div
+        const catDiv = document.createElement('div');
+        catDiv.className = 'category-section';
 
-    function selectMode(n) {
-      selectedMode = n;
-      modeButtons.forEach(btn => btn.classList.remove('active'));
-      document.getElementById('mode-' + n).classList.add('active');
-      totalPlayersEl.textContent = n;
-    }
+        const catTitle = document.createElement('h3');
+        catTitle.textContent = catName;
+        catTitle.className = 'text-2xl font-bold mb-3 border-b pb-1';
+        catDiv.appendChild(catTitle);
 
-    function startMatch() {
-      if (!currentUser) return alert('Please sign in first.');
-      startBtn.disabled = true;
-      createOrJoinMatch(selectedMode);
-    }
-    function getBoardSize(mode) {
-      if (mode === 2) return 4;
-      if (mode === 3) return 5;
-      if (mode === 4) return 6;
-      return 4;
-    }
-    async function createOrJoinMatch(mode) {
-      modal.classList.add('active');
-      modalLeaderboard.innerHTML = '';
-      playersFoundEl.textContent = `Players found: 1/${mode}`;
-      let openMatchId = null;
-      const matchesSnapshot = await db.ref('matches').orderByChild('mode').equalTo(mode).get();
-      if (matchesSnapshot.exists()) {
-        matchesSnapshot.forEach(matchSnap => {
-          const m = matchSnap.val();
-          if (!m.started && Object.keys(m.players || {}).length < mode) {
-            openMatchId = matchSnap.key;
-            return true;
-          }
-        });
-      }
-      const boardSize = getBoardSize(mode);
-      if (openMatchId) {
-        matchId = openMatchId;
-        await joinMatch(matchId);
-      } else {
-        const newMatchRef = db.ref('matches').push();
-        matchId = newMatchRef.key;
-        const playersObj = {};
-        playersObj[currentUser.uid] = {
-          username: userData.username,
-          rating: userData.rating || 0,
-          score: 0,
-        };
-        await newMatchRef.set({
-          mode,
-          boardSize,
-          started: false,
-          players: playersObj,
-          lines: {},
-          boxes: {},
-          turnIndex: 0,
-        });
-        await waitForPlayers(matchId, mode);
-      }
-    }
+        // Fetch books of this category
+        const booksSnapshot = await db.ref('books').orderByChild('categoryId').equalTo(catId).once('value');
+        const books = booksSnapshot.val() || {};
 
-    async function joinMatch(id) {
-      const matchRef = db.ref('matches/' + id);
-      const matchSnap = await matchRef.get();
-      if (!matchSnap.exists()) {
-        alert('Match not found');
-        modal.classList.remove('active');
-        startBtn.disabled = false;
-        return;
-      }
-      const match = matchSnap.val();
-      if (match.started) {
-        alert('Match already started');
-        modal.classList.remove('active');
-        startBtn.disabled = false;
-        return;
-      }
-      if (match.players && Object.keys(match.players).includes(currentUser.uid)) {
-        listenToMatch(matchId);
-        return;
-      }
-      await matchRef.child('players/' + currentUser.uid).set({
-        username: userData.username,
-        rating: userData.rating || 0,
-        score: 0,
-      });
-      await waitForPlayers(id, match.mode);
-    }
-
-    async function waitForPlayers(id, mode) {
-      totalPlayersEl.textContent = mode;
-      const matchRef = db.ref('matches/' + id);
-      matchRef.on('value', snapshot => {
-        if (!snapshot.exists()) return;
-        const data = snapshot.val();
-        players = Object.keys(data.players || {});
-        playersInfo = data.players || {};
-        playersFoundEl.textContent = `Players found: ${players.length}/${mode}`;
-        renderModalLeaderboard();
-        if (players.length === mode && !data.started) {
-          matchRef.update({ started: true });
-        }
-        if (data.started) {
-          modal.classList.remove('active');
-          listenToMatch(id);
-        }
-      });
-    }
-
-    function renderModalLeaderboard() {
-      modalLeaderboard.innerHTML = '';
-      players.forEach(uid => {
-        const p = playersInfo[uid];
-        const div = document.createElement('div');
-        div.textContent = `${p.username} (Rating: ${p.rating || 0}) - Score: ${p.score || 0}`;
-        modalLeaderboard.appendChild(div);
-      });
-    }
-
-    function listenToMatch(id) {
-      matchId = id;
-      const matchRef = db.ref('matches/' + id);
-      finished = false;
-      matchRef.on('value', async snapshot => {
-        if (!snapshot.exists()) return;
-        gameData = snapshot.val();
-        players = Object.keys(gameData.players || {});
-        playersInfo = gameData.players || {};
-        playerIndex = players.indexOf(currentUser.uid);
-        updateTurnStatus();
-        renderGameBoard();
-        updateScores();
-
-        const boardSize = gameData.boardSize || getBoardSize(gameData.mode);
-        const totalBoxes = boardSize * boardSize;
-        const boxesCount = Object.keys(gameData.boxes || {}).length;
-
-        if (boxesCount === totalBoxes && !finished) {
-          finished = true;
-          setTimeout(() => {
-            showWinner();
-            updateRatings(gameData.mode);
-            restartBtn.style.display = 'block';
-            statusEl.textContent = '';
-            matchRef.off('value');
-            // --- Schedule match cleanup after showing result ---
-            scheduleMatchCleanup();
-          }, 500);
-        }
-      });
-    }
-
-    async function updateRatings(mode) {
-      const allScores = players.map(uid => ({uid, score: gameData.players[uid].score || 0}));
-      allScores.sort((a,b) => b.score - a.score);
-      let ratingChanges = {};
-      if (mode === 2) {
-        ratingChanges[allScores[0].uid] = 12;
-        ratingChanges[allScores[1].uid] = -4;
-      }
-      else if (mode === 3) {
-        ratingChanges[allScores[0].uid] = 12;
-        ratingChanges[allScores[1].uid] = 8;
-        ratingChanges[allScores[2].uid] = -4;
-      }
-      else if (mode === 4) {
-        ratingChanges[allScores[0].uid] = 12;
-        ratingChanges[allScores[1].uid] = 8;
-        ratingChanges[allScores[2].uid] = -8;
-        ratingChanges[allScores[3].uid] = -8;
-      }
-      for (const uid in ratingChanges) {
-        const change = ratingChanges[uid];
-        const userRef = db.ref('users/' + uid + '/rating');
-        const snap = await userRef.get();
-        let oldRating = snap.exists() ? snap.val() : 1000;
-        let newRating = Math.max(0, oldRating + change);
-        await userRef.set(newRating);
-        if (uid === currentUser.uid) {
-          ratingEl.textContent = newRating;
-        }
-      }
-    }
-
-    function showWinner() {
-      let maxScore = -Infinity;
-      players.forEach(uid => {
-        const score = gameData.players[uid].score || 0;
-        if (score > maxScore) maxScore = score;
-      });
-      const winners = players.filter(uid => (gameData.players[uid].score || 0) === maxScore);
-      if (winners.length === 1) {
-        const winnerName = gameData.players[winners[0]].username;
-        if (winners[0] === currentUser.uid) {
-          winnerMessage.textContent = 'You win!';
+        if(Object.keys(books).length === 0){
+          const noBooksMsg = document.createElement('p');
+          noBooksMsg.textContent = 'No books in this category yet.';
+          noBooksMsg.className = 'mb-4 italic text-gray-600';
+          catDiv.appendChild(noBooksMsg);
         } else {
-          winnerMessage.textContent = winnerName + ' wins!';
+          const booksGrid = document.createElement('div');
+          booksGrid.className = 'grid grid-cols-2 md:grid-cols-4 gap-4 mb-6';
+
+          for(const [bookId, book] of Object.entries(books)){
+            const bookCard = createBookCard(book, bookId);
+            booksGrid.appendChild(bookCard);
+          }
+
+          catDiv.appendChild(booksGrid);
         }
-      } else {
-        const winnerNames = winners.map(uid => gameData.players[uid].username);
-        if (winners.includes(currentUser.uid)) {
-          const otherNames = winnerNames.filter(name => name !== userData.username);
-          winnerMessage.textContent = 'Tie: You, ' + otherNames.join(', ');
-        } else {
-          winnerMessage.textContent = 'Tie: ' + winnerNames.join(', ');
-        }
+
+        categoriesContainer.appendChild(catDiv);
       }
+    } catch(err){
+      categoriesContainer.innerHTML = `<p class="text-red-600">Error loading categories/books: ${err.message}</p>`;
     }
+  }
 
-    function updateTurnStatus() {
-      if (!gameData) return;
-      const currentTurnIndex = gameData.turnIndex || 0;
-      isMyTurn = (playerIndex === currentTurnIndex);
-      const turnPlayer = players[currentTurnIndex];
-      const turnName = playersInfo[turnPlayer]?.username || 'Unknown';
-      statusEl.textContent = isMyTurn ? `Your turn (${turnName})` : `Waiting for ${turnName}`;
-      const colors = ['blue-turn', 'red-turn', 'orange-turn', 'green-turn'];
-      statusEl.className = colors[currentTurnIndex] || 'blue-turn';
-    }
+  // Create book card DOM element for Home & Wishlist & Cart
+  function createBookCard(book, bookId){
+    const card = document.createElement('div');
+    card.className = "border rounded shadow p-3 flex flex-col cursor-pointer hover:shadow-lg transition";
 
-    function updateScores() {
-      if (!gameData) return;
-      let html = '';
-      players.forEach(uid => {
-        const p = gameData.players[uid];
-        const name = p.username;
-        const score = p.score || 0;
-        html += `<span style="color: ${getPlayerColor(uid)}; font-weight: bold; margin: 0 10px;">${name}: ${score}</span>`;
-      });
-      scoresEl.innerHTML = html;
-    }
+    // Thumbnail image
+    const img = document.createElement('img');
+    img.src = book.coverUrl || 'https://via.placeholder.com/150x200?text=No+Image';
+    img.alt = book.title;
+    img.className = "w-full h-48 object-contain mb-2 rounded";
+    card.appendChild(img);
 
-    function renderGameBoard() {
-      if (!gameData) return;
-      const boardSize = gameData.boardSize || getBoardSize(gameData.mode);
-      const lines = gameData.lines || {};
-      const boxes = gameData.boxes || {};
-      let cellPx = 56;
-      if (window.innerWidth < 600) cellPx = Math.max(28, Math.floor(window.innerWidth / (boardSize*2+2)));
-      else if (boardSize >= 6) cellPx = 44;
-      let boardHTML = `<div class="board-grid" style="
-        grid-template-columns: repeat(${boardSize*2+1}, ${cellPx}px);
-        grid-template-rows: repeat(${boardSize*2+1}, ${cellPx}px);
-        width: ${cellPx*(boardSize*2+1)}px;
-        max-width: 98vw;
-      ">`;
-      for(let r=0; r<boardSize*2+1; r++) {
-        for(let c=0; c<boardSize*2+1; c++) {
-          if(r%2===0 && c%2===0) {
-            boardHTML += `<div class="dot"></div>`;
-          }
-          else if(r%2===0 && c%2===1) {
-            const lineKey = `h-${r/2}-${(c-1)/2}`;
-            if(lines[lineKey]) {
-              boardHTML += `<div class="line horizontal active" style="background:${getPlayerColor(lines[lineKey])};width:${cellPx}px;"></div>`;
-            } else {
-              boardHTML += `<div class="line horizontal" onclick="tryDrawLine('${lineKey}')" style="cursor:${isMyTurn?'pointer':'default'};width:${cellPx}px;"></div>`;
-            }
-          }
-          else if(r%2===1 && c%2===0) {
-            const lineKey = `v-${(r-1)/2}-${c/2}`;
-            if(lines[lineKey]) {
-              boardHTML += `<div class="line vertical active" style="background:${getPlayerColor(lines[lineKey])};height:${cellPx}px;"></div>`;
-            } else {
-              boardHTML += `<div class="line vertical" onclick="tryDrawLine('${lineKey}')" style="cursor:${isMyTurn?'pointer':'default'};height:${cellPx}px;"></div>`;
-            }
-          }
-          else if(r%2===1 && c%2===1) {
-            const boxKey = `${(r-1)/2}-${(c-1)/2}`;
-            if(boxes[boxKey]!=null) {
-              const ownerIdx = players.indexOf(boxes[boxKey]);
-              boardHTML += `<div class="box player-${ownerIdx+1}" style="width:${cellPx}px;height:${cellPx}px;">${ownerIdx+1}</div>`;
-            } else {
-              boardHTML += `<div class="box" style="width:${cellPx}px;height:${cellPx}px;"></div>`;
-            }
-          }
-        }
-      }
-      boardHTML += '</div>';
-      gameBoard.innerHTML = boardHTML;
-    }
+    // Book title below thumbnail
+    const title = document.createElement('h4');
+    title.textContent = book.title;
+    title.className = "font-semibold text-center";
+    card.appendChild(title);
 
-    function getPlayerColor(uid) {
-      const idx = players.indexOf(uid);
-      const colors = ['#4a90e2','#e94e77','#f5a623','#7ed321'];
-      return colors[idx] || '#777';
-    }
+    // Click to open detail page
+    card.addEventListener('click', () => openBookDetail(bookId));
 
-    async function tryDrawLine(lineKey) {
-      if (!isMyTurn || !gameData) return;
-      if (gameData.lines && gameData.lines[lineKey]) return;
-      const matchRef = db.ref('matches/' + matchId);
-      try {
-        await matchRef.transaction(match => {
-          if (!match) return;
-          if (match.lines && match.lines[lineKey]) {
-            return;
-          }
-          if (!match.lines) match.lines = {};
-          match.lines[lineKey] = currentUser.uid;
-          if (!match.boxes) match.boxes = {};
-          const boardSize = match.boardSize || getBoardSize(match.mode);
-          const newBoxes = getBoxesFromLine(lineKey, boardSize);
-          let gotBox = false;
-          newBoxes.forEach(boxKey => {
-            if (match.boxes[boxKey]) return;
-            const edges = getBoxEdges(boxKey);
-            const allEdgesDrawn = edges.every(edge => match.lines[edge]);
-            if (allEdgesDrawn) {
-              match.boxes[boxKey] = currentUser.uid;
-              match.players[currentUser.uid].score = (match.players[currentUser.uid].score || 0) + 1;
-              gotBox = true;
-            }
-          });
-          if (!gotBox) {
-            match.turnIndex = (match.turnIndex + 1) % match.mode;
-          }
-          return match;
-        });
-      } catch (err) {
-        console.error('Failed to draw line:', err);
-      }
-    }
-    function getBoxesFromLine(lineKey, boardSize) {
-      const parts = lineKey.split('-');
-      const type = parts[0];
-      const r = parseInt(parts[1]);
-      const c = parseInt(parts[2]);
-      const boxes = [];
-      if (type === 'h') {
-        if (r > 0) boxes.push(`${r-1}-${c}`);
-        if (r < boardSize) boxes.push(`${r}-${c}`);
-      } else if (type === 'v') {
-        if (c > 0) boxes.push(`${r}-${c-1}`);
-        if (c < boardSize) boxes.push(`${r}-${c}`);
-      }
-      return boxes.filter(box => {
-        const [br, bc] = box.split('-').map(Number);
-        return br >= 0 && br < boardSize && bc >= 0 && bc < boardSize;
-      });
-    }
-    function getBoxEdges(boxKey) {
-      const [r, c] = boxKey.split('-').map(Number);
-      return [
-        `h-${r}-${c}`,
-        `h-${r+1}-${c}`,
-        `v-${r}-${c}`,
-        `v-${r}-${c+1}`
-      ];
-    }
-    function restartGame() {
-      if (!matchId) return;
-      db.ref('matches/' + matchId).remove();
-      resetGameUI();
-      startBtn.disabled = false;
-    }
-    function resetGameUI() {
-      gameBoard.innerHTML = '';
-      statusEl.textContent = '';
-      winnerMessage.textContent = '';
-      restartBtn.style.display = 'none';
-      matchLinkEl.textContent = '';
-      scoresEl.innerHTML = '';
-      finished = false;
-    }
+    // For non-owner users, add Wishlist & Cart buttons inside detail page only, so no buttons here
 
-    let leaderboardData = {};
-    async function listenLeaderboard() {
-      db.ref('users').orderByChild('rating').limitToLast(100).on('value', snapshot => {
-        leaderboardData = {};
-        if (snapshot.exists()) {
-          snapshot.forEach(snap => {
-            leaderboardData[snap.key] = snap.val();
-          });
-        }
-        if (screens.leaderboard && !screens.leaderboard.classList.contains('hidden')) {
-          renderLeaderboard();
-        }
-      });
-    }
-    function renderLeaderboard() {
-      const listEl = document.getElementById('leaderboard-list');
-      listEl.innerHTML = '';
-      const sortedUsers = Object.entries(leaderboardData)
-        .sort((a,b) => (b[1].rating || 0) - (a[1].rating || 0))
-        .slice(0, 50);
-      sortedUsers.forEach(([uid, user]) => {
-        const div = document.createElement('div');
-        div.className = 'friend-item';
-        div.innerHTML = `
-          <img class="friend-pic" src="https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=4a90e2&color=fff&rounded=true&size=48" alt=""/>
-          <div class="friend-info">
-            <div class="friend-name">${user.username}</div>
-            <div class="friend-rating">Rating: ${user.rating || 0}</div>
-          </div>
-        `;
-        listEl.appendChild(div);
-      });
-    }
+    return card;
+  }
 
-    // ----------- Friends & Notification Improvements -----------
-    async function loadFriends() {
-      if (!currentUser) return;
-      friendsListEl.innerHTML = '';
-      if (!userData.friends) userData.friends = {};
-      const friendIds = Object.keys(userData.friends);
-      if (friendIds.length === 0) {
-        friendsListEl.textContent = 'You have no friends yet.';
+  // Open Book Detail Page
+  async function openBookDetail(bookId){
+    currentBookId = bookId;
+    // Fetch book info
+    try {
+      const bookSnap = await db.ref('books/'+bookId).once('value');
+      const book = bookSnap.val();
+      if(!book) {
+        alert('Book not found');
         return;
       }
-      for (const fid of friendIds) {
-        const snap = await db.ref('users/' + fid).get();
-        if (!snap.exists()) continue;
-        const f = snap.val();
-        const online = f.online ? true : false;
-        const friendDiv = createFriendItem(fid, f.username, f.rating || 0, online);
-        friendsListEl.appendChild(friendDiv);
-      }
-    }
 
-    function createFriendItem(uid, username, rating, online) {
-      const div = document.createElement('div');
-      div.className = 'friend-item';
-      div.innerHTML = `
-        <img class="friend-pic" src="https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=4a90e2&color=fff&rounded=true&size=48" alt=""/>
-        <div class="friend-info">
-          <div class="friend-name">${username}
-            ${online ? '<span class="online-badge" title="Online"></span>' : '<span class="offline-badge" title="Offline"></span>'}
+      detailThumbnail.src = book.coverUrl || 'https://via.placeholder.com/300x400?text=No+Image';
+      detailTitle.textContent = book.title;
+      detailAuthor.textContent = book.author || 'Unknown author';
+
+      // Show owner controls for editing book info
+      if(currentUser.email === OWNER_EMAIL){
+        showEditBookModal(bookId, book);
+      }
+
+      // Load comments
+      loadComments(bookId);
+
+      // Show section
+      changeSection('bookDetail');
+    } catch(err){
+      alert('Failed to load book details: ' + err.message);
+    }
+  }
+
+  // Show Edit Book Modal (Owner only)
+  function showEditBookModal(bookId, book){
+    // Add an Edit button at the top right of book detail section
+    // Only one edit button - prevent duplicates
+    if(document.getElementById('edit-book-btn')) return;
+
+    const editBtn = document.createElement('button');
+    editBtn.textContent = 'Edit Book Info';
+    editBtn.id = 'edit-book-btn';
+    editBtn.className = 'bg-yellow-500 text-white px-3 py-1 rounded float-right mb-4 hover:bg-yellow-600';
+
+    detailTitle.parentNode.insertBefore(editBtn, detailTitle.nextSibling);
+
+    editBtn.addEventListener('click', () => {
+      showModal(`
+        <h3 class="text-xl font-bold mb-4">Edit Book Info</h3>
+        <form id="edit-book-form" class="space-y-3">
+          <input type="text" id="edit-title" placeholder="Book Title" value="${escapeHtml(book.title)}" required class="w-full p-2 border rounded"/>
+          <input type="text" id="edit-author" placeholder="Author" value="${escapeHtml(book.author || '')}" class="w-full p-2 border rounded"/>
+          <input type="url" id="edit-coverUrl" placeholder="Cover Image URL" value="${escapeHtml(book.coverUrl || '')}" class="w-full p-2 border rounded"/>
+          <div class="flex justify-end space-x-2">
+            <button type="button" id="cancel-edit" class="px-4 py-2 border rounded">Cancel</button>
+            <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Save</button>
           </div>
-          <div class="friend-rating">Rating: ${rating}</div>
+        </form>
+      `);
+
+      document.getElementById('cancel-edit').addEventListener('click', closeModal);
+
+      document.getElementById('edit-book-form').addEventListener('submit', async e => {
+        e.preventDefault();
+        const newTitle = document.getElementById('edit-title').value.trim();
+        const newAuthor = document.getElementById('edit-author').value.trim();
+        const newCoverUrl = document.getElementById('edit-coverUrl').value.trim();
+
+        try {
+          await db.ref('books/'+bookId).update({
+            title: newTitle,
+            author: newAuthor,
+            coverUrl: newCoverUrl
+          });
+          closeModal();
+          // Refresh detail page & home
+          openBookDetail(bookId);
+          loadCategoriesAndBooks();
+          alert('Book info updated successfully.');
+        } catch(err){
+          alert('Failed to update book: ' + err.message);
+        }
+      });
+    });
+  }
+
+  // Escape HTML to prevent injection in modal inputs
+  function escapeHtml(text) {
+    if(!text) return '';
+    return text.replace(/[&<>"']/g, (m) => ({
+      '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'": '&#39;'
+    })[m]);
+  }
+
+  // Load comments for a book
+  async function loadComments(bookId){
+    commentsList.innerHTML = 'Loading comments...';
+    try {
+      const snap = await db.ref('comments/'+bookId).once('value');
+      const comments = snap.val() || {};
+      commentsList.innerHTML = '';
+      if(Object.keys(comments).length === 0){
+        commentsList.textContent = 'No comments yet.';
+        return;
+      }
+      // Show each comment
+      for(const [key, comment] of Object.entries(comments)){
+        const div = document.createElement('div');
+        div.className = 'mb-2 p-2 bg-white rounded shadow-sm';
+        div.textContent = comment.text;
+        commentsList.appendChild(div);
+      }
+    } catch(err){
+      commentsList.innerHTML = `<p class="text-red-600">Failed to load comments: ${err.message}</p>`;
+    }
+  }
+
+  // Post comment form submit
+  commentForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    const text = commentInput.value.trim();
+    if(!text) return;
+    if(!currentBookId) return alert('No book selected');
+
+    try {
+      const newCommentRef = db.ref('comments/'+currentBookId).push();
+      await newCommentRef.set({
+        text,
+        user: currentUser.email,
+        timestamp: Date.now()
+      });
+      commentInput.value = '';
+      loadComments(currentBookId);
+    } catch(err){
+      alert('Failed to post comment: ' + err.message);
+    }
+  });
+
+  // Back to home button on detail page
+  backHomeBtn.addEventListener('click', () => {
+    // Remove edit button if exists
+    const editBtn = document.getElementById('edit-book-btn');
+    if(editBtn) editBtn.remove();
+    changeSection('home');
+  });
+
+  // Owner controls: Add category & Add book
+  addCategoryBtn.addEventListener('click', () => {
+    showModal(`
+      <h3 class="text-xl font-bold mb-4">Add Category</h3>
+      <form id="add-category-form" class="space-y-3">
+        <input type="text" id="category-name" placeholder="Category name" required class="w-full p-2 border rounded" />
+        <div class="flex justify-end space-x-2">
+          <button type="button" id="cancel-add-category" class="px-4 py-2 border rounded">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Add</button>
         </div>
-        <div class="remove-btn" onclick="removeFriend('${uid}')">✖️</div>
-        ${online ? `<button class="add-btn" onclick="sendChallenge('${uid}')">🎮</button>` : ''}
-      `;
-      return div;
-    }
-    async function removeFriend(uid) {
-      if (!currentUser) return;
-      await db.ref(`users/${currentUser.uid}/friends/${uid}`).remove();
-      await loadUserData();
-      await loadFriends();
-    }
-    function clearSearchResults() { searchResultsEl.innerHTML = ''; }
+      </form>
+    `);
 
-    friendSearchInput.addEventListener('input', async function() {
-      const query = this.value.trim().toLowerCase();
-      clearSearchResults();
-      if (!query) return;
-      const snap = await db.ref('users').get();
-      if (!snap.exists()) return;
-      snap.forEach(s => {
-        const u = s.val();
-        if (s.key === currentUser.uid || (userData.friends && userData.friends[s.key])) return;
-        if (!u.username || !u.username.toLowerCase().includes(query)) return;
-        const div = document.createElement('div');
-        div.className = 'search-item';
-        div.innerHTML = `
-          <img class="search-pic" src="https://ui-avatars.com/api/?name=${encodeURIComponent(u.username)}&background=4a90e2&color=fff&rounded=true&size=48" alt=""/>
-          <div class="search-info">
-            <div class="search-name">${u.username}</div>
-            <div class="search-rating">Rating: ${u.rating || 0}</div>
-          </div>
-          <div class="add-btn" onclick="sendFriendRequest('${s.key}')">+</div>
-        `;
-        searchResultsEl.appendChild(div);
-      });
-    });
+    document.getElementById('cancel-add-category').addEventListener('click', closeModal);
 
-    function listenOnlineUsers() {
-      db.ref('users').on('value', snap => {
-        onlineUsers = {};
-        if (snap.exists()) {
-          snap.forEach(userSnap => {
-            const d = userSnap.val();
-            onlineUsers[userSnap.key] = d.online ? true : false;
-          });
-        }
-        if (!screens.friends.classList.contains('hidden')) loadFriends();
-      });
-    }
-
-    function listenFriendRequests() {
-      db.ref('users/' + currentUser.uid + '/friendRequests').on('value', snap => {
-        notificationList.innerHTML = '';
-        if (!snap.exists()) return;
-        const reqs = snap.val();
-        for (const fromId in reqs) {
-          db.ref('users/' + fromId).get().then(userSnap => {
-            if (!userSnap.exists()) return;
-            const user = userSnap.val();
-            const div = document.createElement('div');
-            div.className = 'notification-item';
-            div.innerHTML = `
-              <span class="notification-text">${user.username} wants to be your friend.</span>
-              <span>
-                <span class="notif-btn accept" onclick="acceptFriendRequest('${fromId}')">✔️</span>
-                <span class="notif-btn decline" onclick="declineFriendRequest('${fromId}')">✖️</span>
-              </span>
-            `;
-            notificationList.appendChild(div);
-          });
-        }
-      });
-    }
-    function sendFriendRequest(uid) {
-      db.ref('users/' + uid + '/friendRequests/' + currentUser.uid).set(true);
-      alert('Friend request sent!');
-    }
-    function acceptFriendRequest(fromId) {
-      db.ref(`users/${currentUser.uid}/friends/${fromId}`).set(true);
-      db.ref(`users/${fromId}/friends/${currentUser.uid}`).set(true);
-      db.ref(`users/${currentUser.uid}/friendRequests/${fromId}`).remove();
-      loadUserData();
-      loadFriends();
-      notificationModal.classList.remove('active');
-    }
-    function declineFriendRequest(fromId) {
-      db.ref(`users/${currentUser.uid}/friendRequests/${fromId}`).remove();
-      notificationModal.classList.remove('active');
-    }
-    notificationBell.onclick = () => { notificationModal.classList.add('active'); }
-    function closeNotificationModal() { notificationModal.classList.remove('active'); }
-    function setupInitialUI() {
-      modeButtons.forEach(btn => btn.classList.remove('active'));
-      document.getElementById('mode-' + selectedMode).classList.add('active');
-      totalPlayersEl.textContent = selectedMode;
-      restartBtn.style.display = 'none';
-      winnerMessage.textContent = '';
-      scoresEl.innerHTML = '';
-      statusEl.textContent = '';
-      matchLinkEl.textContent = '';
-      finished = false;
-    }
-
-    function sendChallenge(friendUid) {
-      const challengeObj = {
-        from: currentUser.uid,
-        fromName: userData.username,
-        timestamp: Date.now(),
-        mode: selectedMode,
-        participants: [currentUser.uid],
-        status: "pending"
-      };
-      db.ref('users/' + friendUid + '/challenges/' + currentUser.uid).set(challengeObj);
-      alert('Challenge sent!');
-    }
-
-    function listenChallenges() {
-      db.ref('users/' + auth.currentUser.uid + '/challenges').on('value', snap => {
-        if (!snap.exists()) { challengeModal.classList.remove('active'); return; }
-        const challenges = snap.val();
-        for (const fromId in challenges) {
-          const ch = challenges[fromId];
-          if (ch.status === "pending") {
-            challengeState = {fromId, challenge: ch};
-            challengeInfo.innerHTML = `
-              <div class="mb-2 font-bold text-lg">${ch.fromName} challenged you!</div>
-              <div class="mb-2">Players: ${ch.participants.map(uid=>uid===currentUser.uid?"You":(leaderboardData[uid]?.username||uid)).join(', ')}</div>
-              <div class="mb-2">Mode: ${ch.mode} Players</div>
-              <div class="mb-2">Do you want to join?</div>
-            `;
-            challengeAcceptBtn.onclick = ()=>acceptChallenge(fromId, ch);
-            challengeDeclineBtn.onclick = ()=>declineChallenge(fromId);
-            challengeModal.classList.add('active');
-            return;
-          }
-        }
-        challengeModal.classList.remove('active');
-      });
-    }
-
-    async function acceptChallenge(fromId, ch) {
-      if (!ch.participants.includes(currentUser.uid)) {
-        ch.participants.push(currentUser.uid);
+    document.getElementById('add-category-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const catName = document.getElementById('category-name').value.trim();
+      if(!catName) return alert('Category name required');
+      try {
+        // Use push to generate unique ID
+        const catRef = db.ref('categories').push();
+        await catRef.set(catName);
+        closeModal();
+        loadCategoriesAndBooks();
+        alert('Category added');
+      } catch(err){
+        alert('Failed to add category: ' + err.message);
       }
-      db.ref(`users/${auth.currentUser.uid}/challenges/${fromId}/status`).set('accepted');
-      db.ref(`users/${fromId}/challenges/${auth.currentUser.uid}/status`).set('accepted');
-      setTimeout(()=>{
-        db.ref(`users/${auth.currentUser.uid}/challenges/${fromId}`).remove();
-        challengeModal.classList.remove('active');
-        alert('You accepted the challenge! Please arrange match with your friend.');
-      },600);
-    }
-    function declineChallenge(fromId) {
-      db.ref(`users/${auth.currentUser.uid}/challenges/${fromId}/status`).set('declined');
-      setTimeout(()=>{
-        db.ref(`users/${auth.currentUser.uid}/challenges/${fromId}`).remove();
-        challengeModal.classList.remove('active');
-      },600);
+    });
+  });
+
+  addBookBtn.addEventListener('click', async () => {
+    // Fetch categories for dropdown
+    let categories = {};
+    try {
+      const snap = await db.ref('categories').once('value');
+      categories = snap.val() || {};
+    } catch(e){
+      alert('Failed to load categories for book addition');
+      return;
     }
 
-    window.addEventListener("resize", ()=>{ renderGameBoard(); });
+    // Build category options
+    let optionsHtml = '<option value="">Select Category</option>';
+    for(const [id, name] of Object.entries(categories)){
+      optionsHtml += `<option value="${id}">${name}</option>`;
+    }
 
-  </script>
+    showModal(`
+      <h3 class="text-xl font-bold mb-4">Add Book</h3>
+      <form id="add-book-form" class="space-y-3">
+        <input type="text" id="book-title" placeholder="Book title" required class="w-full p-2 border rounded" />
+        <input type="text" id="book-author" placeholder="Author" class="w-full p-2 border rounded" />
+        <input type="url" id="book-coverUrl" placeholder="Cover image URL" class="w-full p-2 border rounded" />
+        <input type="number" id="book-price" placeholder="Price (optional)" min="0" step="any" class="w-full p-2 border rounded" />
+        <select id="book-category" required class="w-full p-2 border rounded">${optionsHtml}</select>
+        <div class="flex justify-end space-x-2">
+          <button type="button" id="cancel-add-book" class="px-4 py-2 border rounded">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Add</button>
+        </div>
+      </form>
+    `);
+
+    document.getElementById('cancel-add-book').addEventListener('click', closeModal);
+
+    document.getElementById('add-book-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const title = document.getElementById('book-title').value.trim();
+      const author = document.getElementById('book-author').value.trim();
+      const coverUrl = document.getElementById('book-coverUrl').value.trim();
+      const priceStr = document.getElementById('book-price').value.trim();
+      const price = priceStr ? parseFloat(priceStr) : null;
+      const categoryId = document.getElementById('book-category').value;
+
+      if(!title || !categoryId) return alert('Title and category are required.');
+
+      try {
+        const newBookRef = db.ref('books').push();
+        await newBookRef.set({
+          title,
+          author,
+          coverUrl,
+          price,
+          categoryId
+        });
+        closeModal();
+        loadCategoriesAndBooks();
+        alert('Book added');
+      } catch(err){
+        alert('Failed to add book: ' + err.message);
+      }
+    });
+  });
+
+  // Wishlist functions
+  async function loadWishlist(){
+    wishlistContainer.innerHTML = 'Loading...';
+    try {
+      const snap = await db.ref('wishlist/'+currentUser.uid).once('value');
+      const wishlist = snap.val() || {};
+      wishlistContainer.innerHTML = '';
+      if(Object.keys(wishlist).length === 0){
+        wishlistContainer.textContent = 'Your wishlist is empty.';
+        return;
+      }
+      for(const bookId of Object.keys(wishlist)){
+        const bookSnap = await db.ref('books/'+bookId).once('value');
+        const book = bookSnap.val();
+        if(book){
+          const card = createBookCard(book, bookId);
+          wishlistContainer.appendChild(card);
+        }
+      }
+    } catch(err){
+      wishlistContainer.innerHTML = `<p class="text-red-600">Failed to load wishlist: ${err.message}</p>`;
+    }
+  }
+
+  async function addToWishlist(bookId){
+    if(!currentUser) return alert('You must be logged in');
+    try {
+      await db.ref(`wishlist/${currentUser.uid}/${bookId}`).set(true);
+      alert('Added to wishlist');
+    } catch(err){
+      alert('Failed to add wishlist: ' + err.message);
+    }
+  }
+
+  // Cart functions
+  async function loadCart(){
+    cartContainer.innerHTML = 'Loading...';
+    try {
+      const snap = await db.ref('cart/'+currentUser.uid).once('value');
+      const cart = snap.val() || {};
+      cartContainer.innerHTML = '';
+      if(Object.keys(cart).length === 0){
+        cartContainer.textContent = 'Your cart is empty.';
+        return;
+      }
+      for(const bookId of Object.keys(cart)){
+        const bookSnap = await db.ref('books/'+bookId).once('value');
+        const book = bookSnap.val();
+        if(book){
+          const card = createBookCard(book, bookId);
+          cartContainer.appendChild(card);
+        }
+      }
+    } catch(err){
+      cartContainer.innerHTML = `<p class="text-red-600">Failed to load cart: ${err.message}</p>`;
+    }
+  }
+
+  async function addToCart(bookId){
+    if(!currentUser) return alert('You must be logged in');
+    try {
+      await db.ref(`cart/${currentUser.uid}/${bookId}`).set(true);
+      alert('Added to cart');
+    } catch(err){
+      alert('Failed to add to cart: ' + err.message);
+    }
+  }
+
+  // Enhance createBookCard to add wishlist & cart buttons on detail page (or optionally here)
+  // But since buttons are needed only in detail page, we add buttons there:
+
+  // Modify openBookDetail to add Wishlist & Cart buttons below author
+
+  // Adjust openBookDetail function to add wishlist & cart buttons below author:
+  async function openBookDetail(bookId){
+    currentBookId = bookId;
+    try {
+      const bookSnap = await db.ref('books/'+bookId).once('value');
+      const book = bookSnap.val();
+      if(!book) {
+        alert('Book not found');
+        return;
+      }
+
+      detailThumbnail.src = book.coverUrl || 'https://via.placeholder.com/300x400?text=No+Image';
+      detailTitle.textContent = book.title;
+      detailAuthor.textContent = book.author || 'Unknown author';
+
+      // Remove existing wishlist/cart buttons if any
+      const existingBtns = document.getElementById('wishlist-cart-buttons');
+      if(existingBtns) existingBtns.remove();
+
+      // Create wishlist/cart buttons container
+      const btnContainer = document.createElement('div');
+      btnContainer.id = 'wishlist-cart-buttons';
+      btnContainer.className = 'flex gap-4 mb-4 justify-center';
+
+      // Add to wishlist button
+      const wishlistBtn = document.createElement('button');
+      wishlistBtn.textContent = 'Add to Wishlist';
+      wishlistBtn.className = 'bg-pink-600 text-white px-4 py-2 rounded hover:bg-pink-700';
+      wishlistBtn.onclick = () => addToWishlist(bookId);
+      btnContainer.appendChild(wishlistBtn);
+
+      // Add to cart button
+      const cartBtn = document.createElement('button');
+      cartBtn.textContent = 'Add to Cart';
+      cartBtn.className = 'bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600';
+      cartBtn.onclick = () => addToCart(bookId);
+      btnContainer.appendChild(cartBtn);
+
+      // Append buttons after author
+      detailAuthor.parentNode.insertBefore(btnContainer, detailAuthor.nextSibling);
+
+      // Owner controls
+      if(currentUser.email === OWNER_EMAIL){
+        showEditBookModal(bookId, book);
+      } else {
+        // Remove edit button if exists (for non-owner)
+        const editBtn = document.getElementById('edit-book-btn');
+        if(editBtn) editBtn.remove();
+      }
+
+      // Load comments
+      loadComments(bookId);
+
+      // Show book detail section
+      changeSection('bookDetail');
+    } catch(err){
+      alert('Failed to load book details: ' + err.message);
+    }
+  }
+
+  // Search functionality
+  searchInput.addEventListener('input', async () => {
+    const query = searchInput.value.trim().toLowerCase();
+    if(query.length < 2){
+      searchResults.classList.add('hidden');
+      searchResults.innerHTML = '';
+      return;
+    }
+    try {
+      const snap = await db.ref('books').once('value');
+      const books = snap.val() || {};
+      const matches = [];
+
+      for(const [id, book] of Object.entries(books)){
+        if(book.title.toLowerCase().includes(query)){
+          matches.push({id, title: book.title});
+        }
+      }
+
+      if(matches.length === 0){
+        searchResults.innerHTML = '<p class="p-2 text-gray-600">No matching books found.</p>';
+      } else {
+        searchResults.innerHTML = '';
+        for(const book of matches){
+          const div = document.createElement('div');
+          div.className = 'p-2 cursor-pointer hover:bg-gray-200';
+          div.textContent = book.title;
+          div.addEventListener('click', () => {
+            searchResults.classList.add('hidden');
+            searchInput.value = '';
+            openBookDetail(book.id);
+          });
+          searchResults.appendChild(div);
+        }
+      }
+      searchResults.classList.remove('hidden');
+    } catch(err){
+      searchResults.innerHTML = `<p class="p-2 text-red-600">Search error: ${err.message}</p>`;
+      searchResults.classList.remove('hidden');
+    }
+  });
+
+  // Hide search results when clicking outside
+  // Hide search results when clicking outside
+  document.addEventListener('click', e => {
+    if(!searchResults.contains(e.target) && e.target !== searchInput){
+      searchResults.classList.add('hidden');
+    }
+  });
+
+  // Auth state observer
+  auth.onAuthStateChanged(user => {
+    currentUser = user;
+    if(user && user.emailVerified){
+      authSection.classList.add('hidden');
+      appSection.classList.remove('hidden');
+
+      // Show owner controls if owner logged in
+      if(user.email === OWNER_EMAIL){
+        ownerControls.classList.remove('hidden');
+      } else {
+        ownerControls.classList.add('hidden');
+      }
+
+      // Default show home
+      navButtons.forEach(b => b.classList.remove('border-blue-600', 'text-blue-600'));
+      navButtons[0].classList.add('border-blue-600', 'text-blue-600');
+      changeSection('home');
+    } else {
+      authSection.classList.remove('hidden');
+      appSection.classList.add('hidden');
+    }
+  });
+</script>
+
 </body>
 </html>
