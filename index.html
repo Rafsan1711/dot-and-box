@@ -58,6 +58,7 @@
     .notif-btn { cursor: pointer; font-size: 1.4rem; margin-left: 12px; user-select: none;}
     .notif-btn.accept { color: #22c55e;}
     .notif-btn.decline { color: #ef4444;}
+    /* Responsive Board */
     #game-board .board-grid {
       margin: 0 auto;
       display: grid;
@@ -72,6 +73,34 @@
       }
       .box, .dot, .line.horizontal, .line.vertical { font-size: 1.1rem !important; }
     }
+    /* Friend online status badge */
+    .online-badge {
+      display: inline-block;
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: #22c55e;
+      margin-left: 8px;
+      border: 2px solid #222;
+    }
+    .offline-badge {
+      display: inline-block;
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: #d1d5db;
+      margin-left: 8px;
+      border: 2px solid #222;
+    }
+    /* Challenge modal */
+    #challenge-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 9999;}
+    #challenge-modal.active { display: flex; }
+    #challenge-content { background: #111; padding: 2rem; border-radius: 16px; max-width: 400px; width: 90%; color: white; text-align: center;}
+    .challenge-btn { margin: 0 8px; padding: 10px 24px; border-radius: 8px; font-weight: bold; font-size: 1rem; border: none; cursor: pointer; }
+    .challenge-accept { background: #22c55e; color: #fff;}
+    .challenge-decline { background: #ef4444; color: #fff;}
+    .challenge-accept:hover { background: #16a34a;}
+    .challenge-decline:hover { background: #b91c1c;}
   </style>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
@@ -82,9 +111,17 @@
   <div id="notification-bell" title="Friend Requests">🔔</div>
   <div id="notification-modal">
     <div id="notification-content">
-      <h2 class="text-2xl font-bold mb-4">Friend Requests</h2>
+      <h2 class="text-2xl font-bold mb-4">Notifications</h2>
       <div id="notification-list"></div>
       <button onclick="closeNotificationModal()" class="mt-4 px-5 py-2 bg-red-600 rounded text-white font-semibold hover:bg-red-700">Close</button>
+    </div>
+  </div>
+  <!-- Challenge Modal -->
+  <div id="challenge-modal">
+    <div id="challenge-content">
+      <div id="challenge-info" class="mb-4"></div>
+      <button id="challenge-accept-btn" class="challenge-btn challenge-accept">Accept</button>
+      <button id="challenge-decline-btn" class="challenge-btn challenge-decline">Decline</button>
     </div>
   </div>
 
@@ -163,7 +200,7 @@
     const auth = firebase.auth();
     const db = firebase.database();
 
-    // === UI Elements ===
+    // UI Elements
     const authScreen = document.getElementById('auth-screen');
     const app = document.getElementById('app');
     const usernameEl = document.getElementById('username');
@@ -186,6 +223,10 @@
     const friendSearchInput = document.getElementById('friend-search');
     const friendsListEl = document.getElementById('friends-list');
     const searchResultsEl = document.getElementById('search-results');
+    const challengeModal = document.getElementById('challenge-modal');
+    const challengeInfo = document.getElementById('challenge-info');
+    const challengeAcceptBtn = document.getElementById('challenge-accept-btn');
+    const challengeDeclineBtn = document.getElementById('challenge-decline-btn');
     const screens = {
       home: document.getElementById('screen-home'),
       leaderboard: document.getElementById('screen-leaderboard'),
@@ -199,7 +240,7 @@
       settings: document.getElementById('nav-settings'),
     };
 
-    // === GLOBALS ===
+    // GLOBALS
     let currentUser = null;
     let userData = null;
     let selectedMode = 2;
@@ -210,19 +251,26 @@
     let players = [];
     let playersInfo = {};
     let finished = false;
+    let onlineUsers = {};
+    let challengeState = null; // For incoming challenge
 
-    // === AUTH & USER ===
+    // ==== AUTH & USER ====
     auth.onAuthStateChanged(async user => {
       if (user) {
         currentUser = user;
         await loadUserData();
+        setOnlineStatus(true);
         authScreen.style.display = 'none';
         app.classList.remove('hidden');
         showScreen('home');
         setupInitialUI();
         listenFriendRequests();
+        listenChallenges();
         listenLeaderboard();
+        listenOnlineUsers();
+        window.addEventListener("beforeunload", ()=>setOnlineStatus(false));
       } else {
+        setOnlineStatus(false);
         currentUser = null;
         userData = null;
         app.classList.add('hidden');
@@ -241,21 +289,28 @@
           rating: 1000,
           friends: {},
           friendRequests: {},
+          online: false,
         };
         await db.ref('users/' + currentUser.uid).set(userData);
       }
       usernameEl.textContent = userData.username;
       ratingEl.textContent = userData.rating || 0;
     }
+
+    function setOnlineStatus(status) {
+      if (!auth.currentUser) return;
+      db.ref('users/' + auth.currentUser.uid + '/online').set(status);
+    }
+
     function signIn() {
       const provider = new firebase.auth.GoogleAuthProvider();
       auth.signInWithPopup(provider);
     }
     function signOut() {
+      setOnlineStatus(false);
       auth.signOut();
     }
 
-    // === NAVIGATION ===
     function showScreen(name) {
       for (const key in screens) {
         screens[key].classList.toggle('hidden', key !== name);
@@ -271,7 +326,6 @@
       }
     }
 
-    // === MODE SELECT ===
     function selectMode(n) {
       selectedMode = n;
       modeButtons.forEach(btn => btn.classList.remove('active'));
@@ -279,20 +333,17 @@
       totalPlayersEl.textContent = n;
     }
 
-    // === GAME FUNCTIONS ===
     function startMatch() {
       if (!currentUser) return alert('Please sign in first.');
       startBtn.disabled = true;
       createOrJoinMatch(selectedMode);
     }
-
     function getBoardSize(mode) {
       if (mode === 2) return 4;
       if (mode === 3) return 5;
       if (mode === 4) return 6;
       return 4;
     }
-
     async function createOrJoinMatch(mode) {
       modal.classList.add('active');
       modalLeaderboard.innerHTML = '';
@@ -423,42 +474,32 @@
       });
     }
 
-    // Rating logic
     async function updateRatings(mode) {
-      // Prepare array of users and scores
       const allScores = players.map(uid => ({uid, score: gameData.players[uid].score || 0}));
-      // Sort descending
       allScores.sort((a,b) => b.score - a.score);
       let ratingChanges = {};
-
-      // 2 players
       if (mode === 2) {
-        ratingChanges[allScores[0].uid] = 12; // winner
-        ratingChanges[allScores[1].uid] = -4; // loser
+        ratingChanges[allScores[0].uid] = 12;
+        ratingChanges[allScores[1].uid] = -4;
       }
-      // 3 players
       else if (mode === 3) {
-        ratingChanges[allScores[0].uid] = 12; // winner
-        ratingChanges[allScores[1].uid] = 8;  // 2nd
-        ratingChanges[allScores[2].uid] = -4; // 3rd
+        ratingChanges[allScores[0].uid] = 12;
+        ratingChanges[allScores[1].uid] = 8;
+        ratingChanges[allScores[2].uid] = -4;
       }
-      // 4 players
       else if (mode === 4) {
-        ratingChanges[allScores[0].uid] = 12; // winner
-        ratingChanges[allScores[1].uid] = 8;  // 2nd
-        ratingChanges[allScores[2].uid] = -8; // 3rd
-        ratingChanges[allScores[3].uid] = -8; // 4th
+        ratingChanges[allScores[0].uid] = 12;
+        ratingChanges[allScores[1].uid] = 8;
+        ratingChanges[allScores[2].uid] = -8;
+        ratingChanges[allScores[3].uid] = -8;
       }
-
-      // Save to Firebase for all players
       for (const uid in ratingChanges) {
         const change = ratingChanges[uid];
         const userRef = db.ref('users/' + uid + '/rating');
         const snap = await userRef.get();
         let oldRating = snap.exists() ? snap.val() : 1000;
-        let newRating = Math.max(0, oldRating + change); // never negative
+        let newRating = Math.max(0, oldRating + change);
         await userRef.set(newRating);
-        // If current user, update UI
         if (uid === currentUser.uid) {
           ratingEl.textContent = newRating;
         }
@@ -604,7 +645,6 @@
         console.error('Failed to draw line:', err);
       }
     }
-
     function getBoxesFromLine(lineKey, boardSize) {
       const parts = lineKey.split('-');
       const type = parts[0];
@@ -623,7 +663,6 @@
         return br >= 0 && br < boardSize && bc >= 0 && bc < boardSize;
       });
     }
-
     function getBoxEdges(boxKey) {
       const [r, c] = boxKey.split('-').map(Number);
       return [
@@ -633,14 +672,12 @@
         `v-${r}-${c+1}`
       ];
     }
-
     function restartGame() {
       if (!matchId) return;
       db.ref('matches/' + matchId).remove();
       resetGameUI();
       startBtn.disabled = false;
     }
-
     function resetGameUI() {
       gameBoard.innerHTML = '';
       statusEl.textContent = '';
@@ -685,6 +722,7 @@
       });
     }
 
+    // ----------- Friends & Notification Improvements -----------
     async function loadFriends() {
       if (!currentUser) return;
       friendsListEl.innerHTML = '';
@@ -698,20 +736,25 @@
         const snap = await db.ref('users/' + fid).get();
         if (!snap.exists()) continue;
         const f = snap.val();
-        const friendDiv = createFriendItem(fid, f.username, f.rating || 0);
+        const online = f.online ? true : false;
+        const friendDiv = createFriendItem(fid, f.username, f.rating || 0, online);
         friendsListEl.appendChild(friendDiv);
       }
     }
-    function createFriendItem(uid, username, rating) {
+
+    function createFriendItem(uid, username, rating, online) {
       const div = document.createElement('div');
       div.className = 'friend-item';
       div.innerHTML = `
         <img class="friend-pic" src="https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=4a90e2&color=fff&rounded=true&size=48" alt=""/>
         <div class="friend-info">
-          <div class="friend-name">${username}</div>
+          <div class="friend-name">${username}
+            ${online ? '<span class="online-badge" title="Online"></span>' : '<span class="offline-badge" title="Offline"></span>'}
+          </div>
           <div class="friend-rating">Rating: ${rating}</div>
         </div>
         <div class="remove-btn" onclick="removeFriend('${uid}')">✖️</div>
+        ${online ? `<button class="add-btn" onclick="sendChallenge('${uid}')">🎮</button>` : ''}
       `;
       return div;
     }
@@ -722,15 +765,19 @@
       await loadFriends();
     }
     function clearSearchResults() { searchResultsEl.innerHTML = ''; }
+
+    // --- Enhanced Friend Search ---
     friendSearchInput.addEventListener('input', async function() {
       const query = this.value.trim().toLowerCase();
       clearSearchResults();
       if (!query) return;
-      const snap = await db.ref('users').orderByChild('username').startAt(query).endAt(query + "\uf8ff").limitToFirst(10).get();
+      // Search all users whose username contains the query (not just prefix)
+      const snap = await db.ref('users').get();
       if (!snap.exists()) return;
       snap.forEach(s => {
         const u = s.val();
         if (s.key === currentUser.uid || (userData.friends && userData.friends[s.key])) return;
+        if (!u.username || !u.username.toLowerCase().includes(query)) return;
         const div = document.createElement('div');
         div.className = 'search-item';
         div.innerHTML = `
@@ -745,6 +792,22 @@
       });
     });
 
+    // --- Online Users Listener for friend screen ---
+    function listenOnlineUsers() {
+      db.ref('users').on('value', snap => {
+        onlineUsers = {};
+        if (snap.exists()) {
+          snap.forEach(userSnap => {
+            const d = userSnap.val();
+            onlineUsers[userSnap.key] = d.online ? true : false;
+          });
+        }
+        // update friends screen online status instantly
+        if (!screens.friends.classList.contains('hidden')) loadFriends();
+      });
+    }
+
+    // --- Notification System (Friend Requests + Challenges) ---
     function listenFriendRequests() {
       db.ref('users/' + currentUser.uid + '/friendRequests').on('value', snap => {
         notificationList.innerHTML = '';
@@ -798,7 +861,74 @@
       finished = false;
     }
 
+    // --- Challenge System ---
+    function sendChallenge(friendUid) {
+      // Send challenge notification to friend
+      const challengeObj = {
+        from: currentUser.uid,
+        fromName: userData.username,
+        timestamp: Date.now(),
+        mode: selectedMode,
+        participants: [currentUser.uid],
+        status: "pending"
+      };
+      db.ref('users/' + friendUid + '/challenges/' + currentUser.uid).set(challengeObj);
+      alert('Challenge sent!');
+    }
+
+    function listenChallenges() {
+      db.ref('users/' + auth.currentUser.uid + '/challenges').on('value', snap => {
+        if (!snap.exists()) { challengeModal.classList.remove('active'); return; }
+        const challenges = snap.val();
+        for (const fromId in challenges) {
+          const ch = challenges[fromId];
+          if (ch.status === "pending") {
+            // Show modal
+            challengeState = {fromId, challenge: ch};
+            challengeInfo.innerHTML = `
+              <div class="mb-2 font-bold text-lg">${ch.fromName} challenged you!</div>
+              <div class="mb-2">Players: ${ch.participants.map(uid=>uid===currentUser.uid?"You":(leaderboardData[uid]?.username||uid)).join(', ')}</div>
+              <div class="mb-2">Mode: ${ch.mode} Players</div>
+              <div class="mb-2">Do you want to join?</div>
+            `;
+            challengeAcceptBtn.onclick = ()=>acceptChallenge(fromId, ch);
+            challengeDeclineBtn.onclick = ()=>declineChallenge(fromId);
+            challengeModal.classList.add('active');
+            return; // Only one modal at a time
+          }
+        }
+        challengeModal.classList.remove('active');
+      });
+    }
+
+    async function acceptChallenge(fromId, ch) {
+      // Add self to participants
+      if (!ch.participants.includes(currentUser.uid)) {
+        ch.participants.push(currentUser.uid);
+      }
+      // Update challenge status to accepted
+      db.ref(`users/${auth.currentUser.uid}/challenges/${fromId}/status`).set('accepted');
+      db.ref(`users/${fromId}/challenges/${auth.currentUser.uid}/status`).set('accepted');
+      // Optionally, start match with these participants (left for full implementation)
+      // Remove challenge after accept to clean up
+      setTimeout(()=>{
+        db.ref(`users/${auth.currentUser.uid}/challenges/${fromId}`).remove();
+        challengeModal.classList.remove('active');
+        // Optionally, you could auto-create a match here
+        alert('You accepted the challenge! Please arrange match with your friend.');
+      },600);
+    }
+    function declineChallenge(fromId) {
+      db.ref(`users/${auth.currentUser.uid}/challenges/${fromId}/status`).set('declined');
+      setTimeout(()=>{
+        db.ref(`users/${auth.currentUser.uid}/challenges/${fromId}`).remove();
+        challengeModal.classList.remove('active');
+      },600);
+    }
+
+    // Responsive re-render
     window.addEventListener("resize", ()=>{ renderGameBoard(); });
+
   </script>
 </body>
-          </html>
+  </html>
