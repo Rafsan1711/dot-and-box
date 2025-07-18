@@ -9,10 +9,10 @@
     body { font-family: 'Inter', sans-serif; }
     .dot { width: 16px; height: 16px; background: white; border-radius: 50%; margin: auto; }
     .line { background-color: #444; cursor: pointer; transition: background 0.3s, box-shadow 0.3s; }
-    .line.horizontal { height: 7px; width: 48px; margin: auto; }
-    .line.vertical { width: 7px; height: 48px; margin: auto; }
+    .line.horizontal { height: 7px; margin: auto; }
+    .line.vertical { width: 7px; margin: auto; }
     .line.active { cursor: default; }
-    .box { width: 48px; height: 48px; background: #2a2a2a; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.5rem; color: white; user-select: none; transition: background 0.3s; }
+    .box { background: #2a2a2a; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.5rem; color: white; user-select: none; transition: background 0.3s; }
     .player-1 { background: #4a90e2; }
     .player-2 { background: #e94e77; }
     .player-3 { background: #f5a623; }
@@ -29,17 +29,13 @@
     #modal { position: fixed; inset: 0; background: rgba(0,0,0,0.75); display: none; align-items: center; justify-content: center; z-index: 1000; }
     #modal.active { display: flex; }
     #modal-content { background: #111; padding: 2rem; border-radius: 10px; max-width: 400px; width: 90%; color: white; text-align: center; }
-    /* Button Active */
     .mode-btn { transition: background 0.3s, color 0.3s; }
     .mode-btn.active { background: #4ade80; color: black;}
-    /* Loader */
     .loader { border: 5px solid #444; border-top: 5px solid #00ff00; border-radius: 50%; width: 50px; height: 50px; animation: spin 1.5s linear infinite; margin: 0 auto 1rem auto; }
     @keyframes spin { 0% {transform: rotate(0deg);} 100% {transform: rotate(360deg);} }
-    /* Bottom nav */
     .bottom-nav { border-top: 1px solid #555; display: flex; justify-content: space-around; background: #121212; }
     .bottom-nav button { flex-grow: 1; padding: 1rem 0; font-size: 1.1rem; color: #bbb; background: none; border: none; cursor: pointer; transition: background 0.3s;}
     .bottom-nav button.active, .bottom-nav button:hover { background: #222; color: white; }
-    /* Friends Screen Styling */
     #friend-search { width: 100%; max-width: 400px; margin: 0 auto 1rem auto; padding: 10px 15px; font-size: 1.1rem; border-radius: 12px; border: none; outline: none; background: #222; color: white; box-shadow: 0 0 10px #4a90e2; transition: box-shadow 0.3s; }
     #friend-search:focus { box-shadow: 0 0 15px #60a5fa; }
     #friends-list, #search-results { max-width: 400px; margin: 0 auto; margin-bottom: 1rem; }
@@ -63,6 +59,22 @@
     .notif-btn { cursor: pointer; font-size: 1.4rem; margin-left: 12px; user-select: none;}
     .notif-btn.accept { color: #22c55e;}
     .notif-btn.decline { color: #ef4444;}
+    /* Responsive Board */
+    #game-board .board-grid {
+      margin: 0 auto;
+      display: grid;
+      background: #1e1e1e;
+      border-radius: 16px;
+      box-shadow: 0 0 8px #222;
+      gap: 0px;
+      /* These will be set from JS as inline style */
+    }
+    @media (max-width: 600px) {
+      #game-board .board-grid {
+        max-width: 95vw;
+      }
+      .box, .dot, .line.horizontal, .line.vertical { font-size: 1.1rem !important; }
+    }
   </style>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
@@ -200,6 +212,7 @@
     let isMyTurn = false;
     let players = [];
     let playersInfo = {};
+    let finished = false; // track if end shown
 
     // === AUTH & USER ===
     auth.onAuthStateChanged(async user => {
@@ -276,6 +289,15 @@
       createOrJoinMatch(selectedMode);
     }
 
+    // Choose board size based on player count
+    function getBoardSize(mode) {
+      if (mode === 2) return 4;
+      if (mode === 3) return 5;
+      if (mode === 4) return 6;
+      return 4;
+    }
+
+    // Pass boardSize to match creation
     async function createOrJoinMatch(mode) {
       modal.classList.add('active');
       modalLeaderboard.innerHTML = '';
@@ -291,6 +313,7 @@
           }
         });
       }
+      const boardSize = getBoardSize(mode);
       if (openMatchId) {
         matchId = openMatchId;
         await joinMatch(matchId);
@@ -305,6 +328,7 @@
         };
         await newMatchRef.set({
           mode,
+          boardSize,
           started: false,
           players: playersObj,
           lines: {},
@@ -376,6 +400,7 @@
     function listenToMatch(id) {
       matchId = id;
       const matchRef = db.ref('matches/' + id);
+      finished = false;
       matchRef.on('value', snapshot => {
         if (!snapshot.exists()) return;
         gameData = snapshot.val();
@@ -385,36 +410,48 @@
         updateTurnStatus();
         renderGameBoard();
         updateScores();
-        const totalBoxes = gameData.mode * gameData.mode; 
+
+        // --- GAME FINISH LOGIC ---
+        // Always show last move to everyone. Use a 'finished' flag to prevent multiple endings.
+        const boardSize = gameData.boardSize || getBoardSize(gameData.mode);
+        const totalBoxes = boardSize * boardSize;
         const boxesCount = Object.keys(gameData.boxes || {}).length;
-        if (boxesCount === totalBoxes) {
-          let maxScore = -Infinity;
-          players.forEach(uid => {
-            const score = gameData.players[uid].score || 0;
-            if (score > maxScore) maxScore = score;
-          });
-          const winners = players.filter(uid => (gameData.players[uid].score || 0) === maxScore);
-          if (winners.length === 1) {
-            const winnerName = gameData.players[winners[0]].username;
-            if (winners[0] === currentUser.uid) {
-              winnerMessage.textContent = 'You win!';
-            } else {
-              winnerMessage.textContent = winnerName + ' wins!';
-            }
-          } else {
-            const winnerNames = winners.map(uid => gameData.players[uid].username);
-            if (winners.includes(currentUser.uid)) {
-              const otherNames = winnerNames.filter(name => name !== userData.username);
-              winnerMessage.textContent = 'Tie: You, ' + otherNames.join(', ');
-            } else {
-              winnerMessage.textContent = 'Tie: ' + winnerNames.join(', ');
-            }
-          }
-          restartBtn.style.display = 'block';
-          statusEl.textContent = '';
-          matchRef.off('value');
+        if (boxesCount === totalBoxes && !finished) {
+          finished = true;
+          setTimeout(() => {
+            showWinner();
+            restartBtn.style.display = 'block';
+            statusEl.textContent = '';
+            matchRef.off('value');
+          }, 500); // Wait for board to update for everyone
         }
       });
+    }
+
+    function showWinner() {
+      // Determine highest score
+      let maxScore = -Infinity;
+      players.forEach(uid => {
+        const score = gameData.players[uid].score || 0;
+        if (score > maxScore) maxScore = score;
+      });
+      const winners = players.filter(uid => (gameData.players[uid].score || 0) === maxScore);
+      if (winners.length === 1) {
+        const winnerName = gameData.players[winners[0]].username;
+        if (winners[0] === currentUser.uid) {
+          winnerMessage.textContent = 'You win!';
+        } else {
+          winnerMessage.textContent = winnerName + ' wins!';
+        }
+      } else {
+        const winnerNames = winners.map(uid => gameData.players[uid].username);
+        if (winners.includes(currentUser.uid)) {
+          const otherNames = winnerNames.filter(name => name !== userData.username);
+          winnerMessage.textContent = 'Tie: You, ' + otherNames.join(', ');
+        } else {
+          winnerMessage.textContent = 'Tie: ' + winnerNames.join(', ');
+        }
+      }
     }
 
     function updateTurnStatus() {
@@ -440,14 +477,23 @@
       scoresEl.innerHTML = html;
     }
 
-    // === PROFESSIONAL BOARD RENDER ===
+    // === PROFESSIONAL & RESPONSIVE BOARD RENDER ===
     function renderGameBoard() {
       if (!gameData) return;
-      const mode = gameData.mode;
-      const boardSize = mode;
+      const boardSize = gameData.boardSize || getBoardSize(gameData.mode);
       const lines = gameData.lines || {};
       const boxes = gameData.boxes || {};
-      let boardHTML = '<div style="display: grid; grid-template-columns: repeat('+(boardSize*2+1)+', 32px); grid-template-rows: repeat('+(boardSize*2+1)+', 32px); gap: 0px;">';
+      // Responsive cell size
+      let cellPx = 56; // default for desktop
+      if (window.innerWidth < 600) cellPx = Math.max(28, Math.floor(window.innerWidth / (boardSize*2+2)));
+      else if (boardSize >= 6) cellPx = 44;
+      // Main grid HTML
+      let boardHTML = `<div class="board-grid" style="
+        grid-template-columns: repeat(${boardSize*2+1}, ${cellPx}px);
+        grid-template-rows: repeat(${boardSize*2+1}, ${cellPx}px);
+        width: ${cellPx*(boardSize*2+1)}px;
+        max-width: 98vw;
+      ">`;
       for(let r=0; r<boardSize*2+1; r++) {
         for(let c=0; c<boardSize*2+1; c++) {
           if(r%2===0 && c%2===0) {
@@ -456,26 +502,26 @@
           else if(r%2===0 && c%2===1) {
             const lineKey = `h-${r/2}-${(c-1)/2}`;
             if(lines[lineKey]) {
-              boardHTML += `<div class="line horizontal active" style="background:${getPlayerColor(lines[lineKey])};"></div>`;
+              boardHTML += `<div class="line horizontal active" style="background:${getPlayerColor(lines[lineKey])};width:${cellPx}px;"></div>`;
             } else {
-              boardHTML += `<div class="line horizontal" onclick="tryDrawLine('${lineKey}')" style="cursor:${isMyTurn?'pointer':'default'};"></div>`;
+              boardHTML += `<div class="line horizontal" onclick="tryDrawLine('${lineKey}')" style="cursor:${isMyTurn?'pointer':'default'};width:${cellPx}px;"></div>`;
             }
           }
           else if(r%2===1 && c%2===0) {
             const lineKey = `v-${(r-1)/2}-${c/2}`;
             if(lines[lineKey]) {
-              boardHTML += `<div class="line vertical active" style="background:${getPlayerColor(lines[lineKey])};"></div>`;
+              boardHTML += `<div class="line vertical active" style="background:${getPlayerColor(lines[lineKey])};height:${cellPx}px;"></div>`;
             } else {
-              boardHTML += `<div class="line vertical" onclick="tryDrawLine('${lineKey}')" style="cursor:${isMyTurn?'pointer':'default'};"></div>`;
+              boardHTML += `<div class="line vertical" onclick="tryDrawLine('${lineKey}')" style="cursor:${isMyTurn?'pointer':'default'};height:${cellPx}px;"></div>`;
             }
           }
           else if(r%2===1 && c%2===1) {
             const boxKey = `${(r-1)/2}-${(c-1)/2}`;
             if(boxes[boxKey]!=null) {
               const ownerIdx = players.indexOf(boxes[boxKey]);
-              boardHTML += `<div class="box player-${ownerIdx+1}">${ownerIdx+1}</div>`;
+              boardHTML += `<div class="box player-${ownerIdx+1}" style="width:${cellPx}px;height:${cellPx}px;">${ownerIdx+1}</div>`;
             } else {
-              boardHTML += `<div class="box"></div>`;
+              boardHTML += `<div class="box" style="width:${cellPx}px;height:${cellPx}px;"></div>`;
             }
           }
         }
@@ -503,7 +549,8 @@
           if (!match.lines) match.lines = {};
           match.lines[lineKey] = currentUser.uid;
           if (!match.boxes) match.boxes = {};
-          const newBoxes = getBoxesFromLine(lineKey, match.mode);
+          const boardSize = match.boardSize || getBoardSize(match.mode);
+          const newBoxes = getBoxesFromLine(lineKey, boardSize);
           let gotBox = false;
           newBoxes.forEach(boxKey => {
             if (match.boxes[boxKey]) return;
@@ -525,7 +572,7 @@
       }
     }
 
-    function getBoxesFromLine(lineKey, mode) {
+    function getBoxesFromLine(lineKey, boardSize) {
       const parts = lineKey.split('-');
       const type = parts[0];
       const r = parseInt(parts[1]);
@@ -533,14 +580,14 @@
       const boxes = [];
       if (type === 'h') {
         if (r > 0) boxes.push(`${r-1}-${c}`);
-        if (r < mode) boxes.push(`${r}-${c}`);
+        if (r < boardSize) boxes.push(`${r}-${c}`);
       } else if (type === 'v') {
         if (c > 0) boxes.push(`${r}-${c-1}`);
-        if (c < mode) boxes.push(`${r}-${c}`);
+        if (c < boardSize) boxes.push(`${r}-${c}`);
       }
       return boxes.filter(box => {
         const [br, bc] = box.split('-').map(Number);
-        return br >= 0 && br < mode && bc >= 0 && bc < mode;
+        return br >= 0 && br < boardSize && bc >= 0 && bc < boardSize;
       });
     }
 
@@ -568,6 +615,7 @@
       restartBtn.style.display = 'none';
       matchLinkEl.textContent = '';
       scoresEl.innerHTML = '';
+      finished = false;
     }
 
     // === LEADERBOARD ===
@@ -717,7 +765,12 @@
       scoresEl.innerHTML = '';
       statusEl.textContent = '';
       matchLinkEl.textContent = '';
+      finished = false;
     }
+
+    // Responsive re-render
+    window.addEventListener("resize", ()=>{ renderGameBoard(); });
+
   </script>
 </body>
-            </html>
+  </html>
