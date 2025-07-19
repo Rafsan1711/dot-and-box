@@ -1151,6 +1151,49 @@ if (volumeSlider) {
     bgAudio.volume = musicVolume;
   });
         }
+    // --- Restore volume and music toggle from localStorage ---
+window.addEventListener('DOMContentLoaded', function() {
+  // Restore volume slider
+  const savedVolume = localStorage.getItem('bgmusic-volume');
+  const volumeSlider = document.getElementById('volume-slider');
+  if (volumeSlider && savedVolume !== null) {
+    volumeSlider.value = savedVolume;
+    musicVolume = savedVolume / 100;
+    if (bgAudio) bgAudio.volume = musicVolume;
+  }
+
+  // Restore music toggle
+  const savedMusicToggle = localStorage.getItem('bgmusic-toggle');
+  const musicToggle = document.getElementById('music-toggle');
+  if (musicToggle && savedMusicToggle !== null) {
+    const checked = savedMusicToggle === 'true';
+    musicToggle.checked = checked;
+    musicEnabled = checked;
+    setupBgAudio();
+    if (musicEnabled) {
+      bgAudio.volume = musicVolume;
+      if (!musicIsPlaying) bgAudio.play();
+      musicIsPlaying = true;
+    } else {
+      if (musicIsPlaying) bgAudio.pause();
+      musicIsPlaying = false;
+    }
+  }
+});
+
+// --- Save volume and toggle value to localStorage on change ---
+const volumeSlider = document.getElementById('volume-slider');
+if (volumeSlider) {
+  volumeSlider.addEventListener('input', function() {
+    localStorage.setItem('bgmusic-volume', this.value);
+  });
+}
+const musicToggle = document.getElementById('music-toggle');
+if (musicToggle) {
+  musicToggle.addEventListener('change', function() {
+    localStorage.setItem('bgmusic-toggle', this.checked);
+  });
+    }
   </script>
 </body>
                                                                                 </html>
