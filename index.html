@@ -1287,31 +1287,14 @@ window.showProfileModal = showProfileModal;
 document.getElementById('email-login-form').onsubmit = async function(e) {
   e.preventDefault();
   const email = document.getElementById('login-email').value.trim();
-  const password = document.getElementById('login-password').value;
+  const password =  document.getElementById('login-password').value;
   try {
     // Sign in with email & password
-    const cred = await auth.signInWithEmailAndPassword(email, password);
-    emailLoginUser = cred.user;
-    // Generate 6-digit code & send (simulate)
-    verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-    // বাস্তবে email পাঠাও! এখানে শুধু alert/console.
-    alert("Verification code: " + verificationCode);
-    // show modal
-    document.getElementById('code-modal').classList.remove('hidden');
-  } catch (err) {
-    alert(err.message);
-  }
-};
-
-document.getElementById('verify-btn').onclick = function() {
-  const code = document.getElementById('verify-code').value.trim();
-  if (code === verificationCode) {
-    document.getElementById('code-modal').classList.add('hidden');
-    // email verified, proceed
+    await auth.signInWithEmailAndPassword(email, password);
     alert("Login successful!"); // তুমি চাইলে এখানে redirect/app-show করো
     location.reload();
-  } else {
-    document.getElementById('verify-msg').textContent = "Wrong code. Try again!";
+  } catch (err) {
+    alert(err.message);
   }
 };
 function closeCodeModal() {
