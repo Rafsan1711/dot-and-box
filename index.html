@@ -12,7 +12,105 @@
   font-family: 'Balsamiq Sans';
   src: url('fonts/BalsamiqSans-Regular.ttf') format('truetype');
 }
+.bgmusic-settings {
+  box-shadow: 0 2px 12px #222b;
+}
 
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 54px;
+  height: 28px;
+}
+.switch input {display:none;}
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #23272f;
+  transition: .4s;
+  border-radius: 34px;
+  border: 2px solid #4ade80;
+}
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 22px; width: 22px;
+  left: 2px; bottom: 2px;
+  background-color: #4ade80;
+  transition: .4s;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px #000a;
+}
+input:checked + .slider {
+  background-color: #4ade80;
+}
+input:checked + .slider:before {
+  transform: translateX(26px);
+  background: #23272f;
+  border: 2px solid #4ade80;
+}
+input:not(:checked) + .slider:before {
+  background: #4ade80;
+  border: 2px solid #23272f;
+}
+
+.volume-slider {
+  appearance: none;
+  background: linear-gradient(90deg,#4a90e2 0%,#4ade80 100%);
+  height: 6px;
+  border-radius: 6px;
+  outline: none;
+  margin: 0 0 12px 0;
+  transition: background 0.3s;
+}
+.volume-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 24px; height: 24px;
+  background: #fff;
+  border: 3px solid #4ade80;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 6px #60a5fa99;
+  transition: background 0.2s, border 0.2s;
+}
+.volume-slider:active::-webkit-slider-thumb {
+  background: #4ade80;
+}
+.volume-slider::-moz-range-thumb {
+  width: 24px; height: 24px;
+  background: #fff;
+  border: 3px solid #4ade80;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 6px #60a5fa99;
+  transition: background 0.2s, border 0.2s;
+}
+.volume-slider:active::-moz-range-thumb {
+  background: #4ade80;
+}
+.volume-slider::-ms-thumb {
+  width: 24px; height: 24px;
+  background: #fff;
+  border: 3px solid #4ade80;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 6px #60a5fa99;
+  transition: background 0.2s, border 0.2s;
+}
+.volume-slider:active::-ms-thumb {
+  background: #4ade80;
+}
+.volume-slider:focus {
+  outline: none;
+  box-shadow: 0 0 8px #4ade80;
+}
+@media (max-width: 600px) {
+  .bgmusic-settings {padding:10px;}
+  .volume-slider {height:5px;}
+  .switch {width:44px;height:24px;}
+  .slider:before {height:18px;width:18px;}
+  }
 .download-btn {
   background: linear-gradient(90deg, #4a90e2 0%, #60a5fa 100%);
   color: #fff;
@@ -203,6 +301,25 @@
     <span class="mr-2">⬇️</span> Download APK
   </button>
       </div>
+ <div class="bgmusic-settings mt-10 p-4 rounded-xl flex flex-col items-center" style="background:rgba(20,20,34,0.7);border:1px solid #222;">
+  <h3 class="text-lg font-bold mb-4 text-green-400" style="font-family:'Balsamiq Sans',sans-serif;">Volume</h3>
+  
+  <div class="flex items-center w-full justify-between mb-6">
+    <span class="text-base font-semibold mr-3" style="color:#4ade80;">Music</span>
+    <label class="switch">
+      <input type="checkbox" id="music-toggle" checked>
+      <span class="slider"></span>
+    </label>
+  </div>
+  
+  <div class="flex flex-col items-center w-full">
+    <div class="flex items-center justify-between w-full mb-2">
+      <span class="text-sm text-gray-300">0%</span>
+      <span class="text-sm text-gray-300 ml-auto">100%</span>
+    </div>
+    <input type="range" min="0" max="100" value="60" id="volume-slider" class="volume-slider w-full" style="width:100%;">
+  </div>
+ </div>
         
         <button onclick="signOut()" class="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-semibold">Sign Out</button>
       </section>
@@ -981,6 +1098,59 @@
 document.getElementById('download-game-btn').onclick = function() {
   window.location.href = 'dotAndBox.apk';
 };
+    // --- Background Music Logic ---
+let bgAudio;
+let musicIsPlaying = false;
+let musicEnabled = true;
+let musicVolume = 0.6; // default 60%
+
+// Create and setup audio element
+function setupBgAudio() {
+  if (bgAudio) return; // Don't double-create
+  bgAudio = document.createElement('audio');
+  bgAudio.src = 'bg.mp3';
+  bgAudio.loop = true;
+  bgAudio.volume = musicVolume;
+  bgAudio.preload = 'auto';
+  document.body.appendChild(bgAudio);
+}
+
+// Start music after 5 seconds
+setTimeout(() => {
+  setupBgAudio();
+  if (musicEnabled) {
+    bgAudio.volume = musicVolume;
+    bgAudio.play();
+    musicIsPlaying = true;
+  }
+}, 5000);
+
+// --- Music Toggle ---
+const musicToggle = document.getElementById('music-toggle');
+if (musicToggle) {
+  musicToggle.addEventListener('change', function() {
+    musicEnabled = this.checked;
+    setupBgAudio();
+    if (musicEnabled) {
+      bgAudio.volume = musicVolume;
+      if (!musicIsPlaying) bgAudio.play();
+      musicIsPlaying = true;
+    } else {
+      if (musicIsPlaying) bgAudio.pause();
+      musicIsPlaying = false;
+    }
+  });
+}
+
+// --- Volume Slider ---
+const volumeSlider = document.getElementById('volume-slider');
+if (volumeSlider) {
+  volumeSlider.addEventListener('input', function() {
+    musicVolume = this.value / 100;
+    setupBgAudio();
+    bgAudio.volume = musicVolume;
+  });
+        }
   </script>
 </body>
                                                                                 </html>
