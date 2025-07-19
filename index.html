@@ -1181,19 +1181,7 @@ window.addEventListener('DOMContentLoaded', function() {
   }
 });
 
-// --- Save volume and toggle value to localStorage on change ---
-const volumeSlider = document.getElementById('volume-slider');
-if (volumeSlider) {
-  volumeSlider.addEventListener('input', function() {
-    localStorage.setItem('bgmusic-volume', this.value);
-  });
-}
-const musicToggle = document.getElementById('music-toggle');
-if (musicToggle) {
-  musicToggle.addEventListener('change', function() {
-    localStorage.setItem('bgmusic-toggle', this.checked);
-  });
-    }
+
   </script>
 </body>
                                                                                 </html>
