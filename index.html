@@ -6,7 +6,13 @@
   <title>Dot and Box Online Multiplayer</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body { font-family: 'Inter', sans-serif; }
+    body { font-family: 'Balsamiq Sans', sans-serif; }
+ @font-face {
+  font-family: 'Balsamiq Sans';
+  src: url('fonts/BalsamiqSans-Regular.ttf') format('truetype');
+}
+
+
     .dot { width: 16px; height: 16px; background: white; border-radius: 50%; margin: auto; }
     .line { background-color: #444; cursor: pointer; transition: background 0.3s, box-shadow 0.3s; }
     .line.horizontal { height: 7px; margin: auto; }
@@ -18,12 +24,12 @@
     .player-3 { background: #f5a623; }
     .player-4 { background: #7ed321; }
     #status { font-size: 1.3rem; font-weight: bold; margin: 1rem 0; text-align: center; padding: 0.7rem 1.4rem; border-radius: 8px; }
-    .blue-turn { background: #4a90e2; box-shadow: 0 0 12px #4a90e2;}
-    .red-turn { background: #e94e77; box-shadow: 0 0 12px #e94e77;}
-    .orange-turn { background: #f5a623; box-shadow: 0 0 12px #f5a623;}
-    .green-turn { background: #7ed321; box-shadow: 0 0 12px #7ed321;}
-    #winner-message { font-size: 1.9rem; font-weight: 800; text-align: center; margin: 1.5rem 0; color: #00ff00; text-shadow: 0 0 6px #00ff00;}
-    #restart { display: none; margin: 0 auto 2rem auto; padding: 12px 30px; font-size: 1.2rem; font-weight: 700; background: #555; border: none; border-radius: 10px; color: white; cursor: pointer; transition: background 0.3s;}
+    .blue-turn { background: #4a90e2; box-shadow: 0 0 12px #4a90e2; font-family: 'Balsamiq Sans', sans-serif;}
+    .red-turn { background: #e94e77; box-shadow: 0 0 12px #e94e77; font-family: 'Balsamiq Sans', sans-serif;}
+    .orange-turn { background: #f5a623; box-shadow: 0 0 12px #f5a623; font-family: 'Balsamiq Sans', sans-serif;}
+    .green-turn { background: #7ed321; box-shadow: 0 0 12px #7ed321; font-family: 'Balsamiq Sans', sans-serif;}
+    #winner-message { font-size: 1.9rem; font-weight: 800; text-align: center; margin: 1.5rem 0; color: #00ff00; text-shadow: 0 0 6px #00ff00; font-family: 'Balsamiq Sans', sans-serif;}
+    #restart { display: none; margin: 0 auto 2rem auto; padding: 12px 30px; font-size: 1.2rem; font-weight: 700; background: #555; border: none; border-radius: 10px; color: white; cursor: pointer; transition: background 0.3s; font-family: 'Balsamiq Sans', sans-serif;}
     #restart:hover { background: #777;}
     #modal { position: fixed; inset: 0; background: rgba(0,0,0,0.75); display: none; align-items: center; justify-content: center; z-index: 1000; }
     #modal.active { display: flex; }
