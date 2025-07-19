@@ -264,7 +264,14 @@ input:not(:checked) + .slider:before {
   <input id="signup-password" type="password" placeholder="Password" required class="w-full px-4 py-2 rounded bg-gray-800 mb-3 text-white border border-gray-700 focus:outline-none" />
   <button type="submit" class="bg-blue-600 w-full py-2 rounded-lg font-semibold hover:bg-blue-700">Create Account</button>
 </form>
-<!-- Verification Modal -->
+    <h2>Already Have an Account?</h2>
+
+     <form id="email-login-form" class="w-full max-w-xs bg-gray-900 p-6 rounded-xl shadow mb-6">
+  <h2 class="text-xl font-bold mb-4 text-center">Email Login</h2>
+  <input id="login-email" type="email" placeholder="Email" required class="w-full px-4 py-2 rounded bg-gray-800 mb-3 text-white border border-gray-700 focus:outline-none" />
+  <input id="login-password" type="password" placeholder="Password" required class="w-full px-4 py-2 rounded bg-gray-800 mb-3 text-white border border-gray-700 focus:outline-none" />
+  <button type="submit" class="bg-green-600 w-full py-2 rounded-lg font-semibold hover:bg-green-700">Sign In</button>
+</form>
 
     <button id="signin-btn" class="bg-blue-600 hover:bg-blue-700 px-8 py-3 rounded-lg font-semibold shadow" onclick="signIn()">Sign in with Google</button>
   </div>
@@ -1295,6 +1302,19 @@ document.getElementById('email-signup-form').addEventListener('submit', async fu
     alert(err.message);
   }
 });
+    document.getElementById('email-login-form').onsubmit = async function(e) {
+  e.preventDefault();
+  const email = document.getElementById('login-email').value.trim();
+  const password =  document.getElementById('login-password').value;
+  try {
+    // Sign in with email & password
+    await auth.signInWithEmailAndPassword(email, password);
+    alert("Login successful!"); // তুমি চাইলে এখানে redirect/app-show করো
+    location.reload();
+  } catch (err) {
+    alert(err.message);
+  }
+};
 function closeCodeModal() {
   document.getElementById('code-modal').classList.add('hidden');
   auth.signOut();
