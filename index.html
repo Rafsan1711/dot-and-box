@@ -12,7 +12,33 @@
   src: url('fonts/BalsamiqSans-Regular.ttf') format('truetype');
 }
 
-
+.download-btn {
+  background: linear-gradient(90deg, #4a90e2 0%, #60a5fa 100%);
+  color: #fff;
+  font-size: 1.15rem;
+  font-weight: 700;
+  padding: 14px 38px;
+  border-radius: 10px;
+  border: none;
+  box-shadow: 0 2px 8px #2225;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+  outline: none;
+  margin-top: 6px;
+  margin-bottom: 6px;
+  font-family: 'Balsamiq Sans', sans-serif;
+  display: inline-flex;
+  align-items: center;
+}
+.download-btn:hover {
+  background: linear-gradient(90deg, #2563eb 0%, #38bdf8 100%);
+  transform: translateY(-2px) scale(1.04);
+}
+.download-section h3 {
+  color: #4ade80;
+  font-family: 'Balsamiq Sans', sans-serif;
+  text-shadow: 0 1px 7px #333;
+  }
     .dot { width: 16px; height: 16px; background: white; border-radius: 50%; margin: auto; }
     .line { background-color: #444; cursor: pointer; transition: background 0.3s, box-shadow 0.3s; }
     .line.horizontal { height: 7px; margin: auto; }
@@ -170,6 +196,13 @@
       </section>
       <section id="screen-settings" class="hidden">
         <h2 class="text-3xl font-bold mb-6">Settings</h2>
+      <div class="download-section mb-8 text-center">
+  <h3 class="text-xl font-bold mb-3">Download The Game latest version</h3>
+  <button id="download-game-btn" class="download-btn">
+    <span class="mr-2">⬇️</span> Download APK
+  </button>
+      </div>
+        
         <button onclick="signOut()" class="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-semibold">Sign Out</button>
       </section>
     </main>
@@ -944,7 +977,9 @@
     }
 
     window.addEventListener("resize", ()=>{ renderGameBoard(); });
-
+document.getElementById('download-game-btn').onclick = function() {
+  window.location.href = 'dotAndBox.apk';
+};
   </script>
 </body>
                                                                                 </html>
