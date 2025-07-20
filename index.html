@@ -258,6 +258,31 @@ input:not(:checked) + .slider:before {
 
   <div id="auth-screen" class="flex-grow flex flex-col items-center justify-center p-4">
     <h1 class="text-5xl font-extrabold mb-8">Dot and Box Online</h1>
+    <!-- Email Sign Up / Login Form -->
+<div id="auth-form-container" class="w-full max-w-xs mx-auto bg-gray-900 p-6 rounded-xl shadow-lg mb-6">
+  <div id="signup-form" class="">
+    <h2 class="mb-4 text-xl font-bold text-green-300">Create an account</h2>
+    <input id="signup-email" type="email" placeholder="Email" class="w-full mb-3 p-2 rounded bg-gray-800 text-white" required>
+    <input id="signup-password" type="password" placeholder="Password" class="w-full mb-3 p-2 rounded bg-gray-800 text-white" required>
+    <button onclick="signUpWithEmail()" class="w-full bg-green-500 hover:bg-green-600 text-white rounded py-2 font-bold">Sign Up</button>
+    <p id="signup-message" class="text-sm text-center mt-3 text-yellow-400"></p>
+    <p class="mt-4 text-gray-300 text-sm text-center">
+      Already have an account?
+      <a href="#" onclick="showLoginForm()" class="text-blue-400 hover:underline">Log in</a>
+    </p>
+  </div>
+  <div id="login-form" class="hidden">
+    <h2 class="mb-4 text-xl font-bold text-blue-300">Log in to your account</h2>
+    <input id="login-email" type="email" placeholder="Email" class="w-full mb-3 p-2 rounded bg-gray-800 text-white" required>
+    <input id="login-password" type="password" placeholder="Password" class="w-full mb-3 p-2 rounded bg-gray-800 text-white" required>
+    <button onclick="loginWithEmail()" class="w-full bg-blue-500 hover:bg-blue-600 text-white rounded py-2 font-bold">Log In</button>
+    <p id="login-message" class="text-sm text-center mt-3 text-yellow-400"></p>
+    <p class="mt-4 text-gray-300 text-sm text-center">
+      Don't have an account?
+      <a href="#" onclick="showSignUpForm()" class="text-green-400 hover:underline">Sign up</a>
+    </p>
+  </div>
+</div>
     <button id="signin-btn" class="bg-blue-600 hover:bg-blue-700 px-8 py-3 rounded-lg font-semibold shadow" onclick="signIn()">Sign in with Google</button>
   </div>
 
@@ -341,7 +366,36 @@ input:not(:checked) + .slider:before {
       <div id="modal-leaderboard" class="max-h-48 overflow-y-auto text-left text-sm"></div>
     </div>
   </div>
-
+<!-- Profile Modal -->
+<div id="profile-modal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center hidden z-50">
+  <div class="bg-gray-900 rounded-xl p-6 w-full max-w-sm relative">
+    <button onclick="closeProfileModal()" class="absolute top-3 right-3 text-gray-400 hover:text-red-400 text-2xl">&times;</button>
+    <div class="flex items-center mb-4">
+      <img id="profile-pic" class="w-16 h-16 rounded-full border-4 border-green-400 mr-4" src="" alt="Profile" />
+      <div>
+        <div id="profile-username" class="font-extrabold text-xl"></div>
+        <div id="profile-trophy" class="mt-1"></div>
+      </div>
+    </div>
+    <div id="profile-top-img" class="text-center mb-2"></div>
+    <div class="text-lg font-semibold text-green-300 mb-1">Matches Won</div>
+    <div class="bg-gray-800 rounded-lg text-2xl font-bold text-center py-2 mb-4" id="profile-total-won"></div>
+    <div class="space-y-3">
+      <div>
+        <span class="font-semibold text-blue-400">2 Player Mode Matches Won:</span>
+        <span id="profile-won-2" class="ml-2"></span>
+      </div>
+      <div>
+        <span class="font-semibold text-pink-400">3 Player Mode Matches Won:</span>
+        <span id="profile-won-3" class="ml-2"></span>
+      </div>
+      <div>
+        <span class="font-semibold text-yellow-400">4 Player Mode Matches Won:</span>
+        <span id="profile-won-4" class="ml-2"></span>
+      </div>
+    </div>
+  </div>
+</div>
   <script>
     // ==== FIREBASE CONFIGURATION ====
     const firebaseConfig = {
@@ -893,12 +947,14 @@ input:not(:checked) + .slider:before {
         const div = document.createElement('div');
         div.className = 'friend-item';
         div.innerHTML = `
-          <img class="friend-pic" src="https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=4a90e2&color=fff&rounded=true&size=48" alt=""/>
-          <div class="friend-info">
-            <div class="friend-name">${user.username}</div>
-            <div class="friend-rating">Rating: ${user.rating || 0}</div>
-          </div>
-        `;
+  <img class="friend-pic" src="https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=4a90e2&color=fff&rounded=true&size=48" alt=""/>
+  <div class="friend-info">
+    <div class="friend-name">
+      <span style="cursor:pointer;text-decoration:underline;" onclick="showProfileModal('${uid}')">${user.username}</span>
+    </div>
+    <div class="friend-rating">Rating: ${user.rating || 0}</div>
+  </div>
+`;
         listEl.appendChild(div);
       });
     }
@@ -1180,8 +1236,143 @@ window.addEventListener('DOMContentLoaded', function() {
     }
   }
 });
+// Show/hide forms
+function showLoginForm() {
+  document.getElementById('signup-form').classList.add('hidden');
+  document.getElementById('login-form').classList.remove('hidden');
+}
+function showSignUpForm() {
+  document.getElementById('login-form').classList.add('hidden');
+  document.getElementById('signup-form').classList.remove('hidden');
+}
+window.showLoginForm = showLoginForm;
+window.showSignUpForm = showSignUpForm;
 
+// Sign Up with Email + Password
+async function signUpWithEmail() {
+  const email = document.getElementById('signup-email').value.trim();
+  const password = document.getElementById('signup-password').value.trim();
+  const msg = document.getElementById('signup-message');
+  msg.textContent = "";
+  try {
+    // Try creating account
+    const userCred = await firebase.auth().createUserWithEmailAndPassword(email, password);
+    // Send verification email
+    await userCred.user.sendEmailVerification();
+    msg.textContent = "Verification link sent! Check your email.";
+    msg.classList.remove('text-red-400');
+    msg.classList.add('text-green-400');
+    // Log out until verified
+    await firebase.auth().signOut();
+  } catch (error) {
+    // If account exists, try updating password & show message
+    if (error.code === 'auth/email-already-in-use') {
+      try {
+        // Log in using password
+        await firebase.auth().signInWithEmailAndPassword(email, password);
+        // If successful, you are logged in!
+        msg.textContent = "Logged in to your existing account.";
+        msg.classList.remove('text-red-400');
+        msg.classList.add('text-blue-400');
+      } catch (err2) {
+        // If password wrong, allow to update password
+        if (err2.code === 'auth/wrong-password') {
+          msg.textContent = "Email already in use. Wrong password!";
+          msg.classList.remove('text-green-400', 'text-blue-400');
+          msg.classList.add('text-red-400');
+        } else if (err2.code === 'auth/user-not-found') {
+          msg.textContent = "Email exists via Google sign-in. Set a password by resetting password.";
+          msg.classList.remove('text-green-400', 'text-blue-400');
+          msg.classList.add('text-yellow-400');
+        } else {
+          msg.textContent = err2.message;
+          msg.classList.remove('text-green-400', 'text-blue-400');
+          msg.classList.add('text-red-400');
+        }
+      }
+    } else {
+      msg.textContent = error.message;
+      msg.classList.remove('text-green-400', 'text-blue-400');
+      msg.classList.add('text-red-400');
+    }
+  }
+}
 
+// Log In with Email + Password
+async function loginWithEmail() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value.trim();
+  const msg = document.getElementById('login-message');
+  msg.textContent = "";
+  try {
+    const userCred = await firebase.auth().signInWithEmailAndPassword(email, password);
+    if (!userCred.user.emailVerified) {
+      msg.textContent = "Email not verified yet! Please check your inbox.";
+      msg.classList.remove('text-green-400');
+      msg.classList.add('text-yellow-400');
+      await firebase.auth().signOut();
+    } else {
+      msg.textContent = "Logged in successfully!";
+      msg.classList.remove('text-red-400');
+      msg.classList.add('text-green-400');
+      // তোমার লগিন সফল হলে যা করতে হবে, সেটা এখানে করো
+      // location.reload(); // Example: রিলোড করলে লগিন স্টেট দেখাবে
+    }
+  } catch (error) {
+    msg.textContent = error.message;
+    msg.classList.remove('text-green-400');
+    msg.classList.add('text-red-400');
+  }
+}
+window.signUpWithEmail = signUpWithEmail;
+window.loginWithEmail = loginWithEmail;
+function closeProfileModal() {
+  document.getElementById('profile-modal').classList.add('hidden');
+}
+window.closeProfileModal = closeProfileModal;
+
+async function showProfileModal(uid) {
+  const modal = document.getElementById('profile-modal');
+  modal.classList.remove('hidden');
+  // ডেটা লোড করো
+  const snap = await db.ref('users/' + uid).get();
+  if (!snap.exists()) return;
+  const user = snap.val();
+
+  // Image, name
+  document.getElementById('profile-pic').src = user.photoURL || https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=4a90e2&color=fff&rounded=true&size=128;
+  document.getElementById('profile-username').textContent = user.username || '';
+
+  // Trophy এবং top image
+  // leaderboardData অবশ্যই গ্লোবাল ভ্যারিয়েবল হিসেবে রাখতে হবে
+  let leaderboardUsers = Object.entries(leaderboardData)
+    .sort((a,b) => (b[1].rating || 0) - (a[1].rating || 0))
+    .slice(0, 3);
+  let rank = leaderboardUsers.findIndex(([id]) => id === uid) + 1;
+  let trophy = '', topImg = '';
+  if (rank === 1) {
+    trophy = <img src="trophy.png" class="inline w-7 h-7" title="1st Place" />;
+    topImg = <img src="topone.png" class="inline w-32 h-12" alt="Top 1"/>;
+  } else if (rank === 2) {
+    trophy = <img src="trophy.png" class="inline w-7 h-7 opacity-70" title="2nd Place" />;
+    topImg = <img src="toptwo.png" class="inline w-32 h-12" alt="Top 2"/>;
+  } else if (rank === 3) {
+    trophy = <img src="trophy.png" class="inline w-7 h-7 opacity-50" title="3rd Place" />;
+    topImg = <img src="topthree.png" class="inline w-32 h-12" alt="Top 3"/>;
+  } else {
+    trophy = '';
+    topImg = '';
+  }
+  document.getElementById('profile-trophy').innerHTML = trophy;
+  document.getElementById('profile-top-img').innerHTML = topImg;
+
+  // Matches won
+  document.getElementById('profile-total-won').textContent = (user.totalMatchesWon || 0);
+  document.getElementById('profile-won-2').textContent = (user.matchesWon2 || 0);
+  document.getElementById('profile-won-3').textContent = (user.matchesWon3 || 0);
+  document.getElementById('profile-won-4').textContent = (user.matchesWon4 || 0);
+}
+window.showProfileModal = showProfileModal;
   </script>
 </body>
             </html>
