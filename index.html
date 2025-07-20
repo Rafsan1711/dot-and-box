@@ -313,13 +313,10 @@ input:not(:checked) + .slider:before {
     <!-- Google Sign In Button -->
     <div>
     <button id="signin-btn" class="bg-red-500 hover:bg-red-600 px-8 py-3 rounded-lg font-semibold mt-2 flex items-center justify-center gap-2">
-      <img src="https://upload.wikimedia.org/wikipedia/commons/4/4a/Logo_2013_Google.png" class="w-6 h-6" alt="Google"/> Sign in with Google
+      <img src="https://upload.wikimedia.org/wikipedia/commons/4/4a/Logo_2013_Google.png" class="w-6 h-6" onclick="signIn()/> Sign in with Google
     </button>
   </div>
 </div>
-<!-- ... (আপনার আগের কোড) ... -->
-    <button id="signin-btn" class="bg-blue-600 hover:bg-blue-700 px-8 py-3 rounded-lg font-semibold shadow" onclick="signIn()">Sign in with Google</button>
-  </div>
 
   <div id="app" class="hidden flex-grow flex flex-col">
     <header class="flex justify-between items-center p-4 border-b border-gray-700 relative">
@@ -380,7 +377,21 @@ input:not(:checked) + .slider:before {
     <input type="range" min="0" max="100" value="35" id="volume-slider" class="volume-slider w-full" style="width:100%;">
   </div>
  </div>
-        
+   <!-- ... Settings অন্যান্য অপশন ... -->
+
+<div id="create-password-section" class="hidden mt-8 max-w-lg mx-auto bg-gray-800 rounded-xl p-6 shadow flex flex-col gap-3">
+  <h3 class="text-xl font-bold text-green-400 mb-1 text-center">Create a password</h3>
+  <div id="create-password-info" class="text-sm text-gray-400 text-center mb-2">
+    Set a password to enable email login with your Google account.
+  </div>
+  <form id="create-password-form" class="flex flex-col gap-3">
+    <input id="cp-email" type="email" placeholder="Email" class="px-4 py-2 rounded bg-gray-900 border border-gray-700 focus:border-green-400 text-white" readonly />
+    <input id="cp-password" type="password" placeholder="New Password" required class="px-4 py-2 rounded bg-gray-900 border border-gray-700 focus:border-green-400 text-white" autocomplete="new-password">
+    <button type="submit" class="bg-green-500 hover:bg-green-600 font-semibold py-2 rounded text-lg">Set Password</button>
+    <div id="cp-error" class="text-red-500 text-sm min-h-[18px]"></div>
+    <div id="cp-success" class="text-green-400 text-sm min-h-[18px]"></div>
+  </form>
+</div>     
         <button onclick="signOut()" class="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-semibold">Sign Out</button>
       </section>
     </main>
@@ -468,6 +479,12 @@ const gotoReset = document.getElementById('goto-reset');
 const gotoLogin2 = document.getElementById('goto-login2');
 const verifyEmailNotice = document.getElementById('verify-email-notice');
 const resendVerificationBtn = document.getElementById('resend-verification');
+const createPasswordSection = document.getElementById('create-password-section');
+const cpForm = document.getElementById('create-password-form');
+const cpEmail = document.getElementById('cp-email');
+const cpPassword = document.getElementById('cp-password');
+const cpError = document.getElementById('cp-error');
+const cpSuccess = document.getElementById('cp-success');    
 
 // Default: show signup
 function showAuthTab(tab) {
@@ -666,6 +683,60 @@ auth.onAuthStateChanged(async user => {
     function signOut() {
       setOnlineStatus(false);
       auth.signOut();
+    }
+    function checkCreatePasswordEligibility() {
+  if (!currentUser) return createPasswordSection.classList.add('hidden');
+  const providers = (currentUser.providerData || []).map(p => p.providerId);
+  // Only show if user is Google-only (no password) and has email
+  if (providers.includes('google.com') && !providers.includes('password') && currentUser.email) {
+    createPasswordSection.classList.remove('hidden');
+    cpEmail.value = currentUser.email;
+  } else {
+    createPasswordSection.classList.add('hidden');
+  }
+}
+
+// Call this after login/settings screen load
+if (typeof showScreen === "function") {
+  const _showScreen = showScreen;
+  showScreen = function(name) {
+    _showScreen(name);
+    if(name === 'settings') checkCreatePasswordEligibility();
+  }
+}
+
+// Password create form submit
+if (cpForm) {
+  cpForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    cpError.textContent = '';
+    cpSuccess.textContent = '';
+    const email = cpEmail.value.trim();
+    const password = cpPassword.value;
+    if (!email || !password) {
+      cpError.textContent = 'Please enter a valid password.';
+      return;
+    }
+    // Link password to Google account
+    const credential = firebase.auth.EmailAuthProvider.credential(email, password);
+    try {
+      await currentUser.linkWithCredential(credential);
+      cpSuccess.textContent = 'Password created! You can now log in with email & password.';
+      cpForm.reset();
+      setTimeout(() => {
+        checkCreatePasswordEligibility();
+        cpSuccess.textContent = '';
+      }, 2000);
+    } catch (err) {
+      if (err.code === 'auth/credential-already-in-use') {
+        cpError.textContent = 'This email already has a password.';
+      } else if (err.code === 'auth/weak-password') {
+        cpError.textContent = 'Password should be at least 6 characters.';
+      } else {
+        cpError.textContent = err.message.replace('Firebase:', '').replace(/\(auth.*\)/, '');
+      }
+    }
+  });
     }
 
     // --- Enhanced Navigation with Match Cleanup ---
