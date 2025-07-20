@@ -522,7 +522,111 @@ input:not(:checked) + .slider:before {
       setOnlineStatus(false);
       auth.signOut();
     }
+function showLoginForm() {
+  document.getElementById('signup-form').classList.add('hidden');
+  document.getElementById('login-form').classList.remove('hidden');
+}
+function showSignUpForm() {
+  document.getElementById('login-form').classList.add('hidden');
+  document.getElementById('signup-form').classList.remove('hidden');
+}
+window.showLoginForm = showLoginForm;
+window.showSignUpForm = showSignUpForm;
 
+// Sign Up with Email + Password
+async function signUpWithEmail() {
+  const email = document.getElementById('signup-email').value.trim();
+  const password = document.getElementById('signup-password').value.trim();
+  const msg = document.getElementById('signup-message');
+  msg.textContent = "";
+  try {
+    // Try creating account
+    const userCred = await firebase.auth().createUserWithEmailAndPassword(email, password);
+    // Send verification email
+    await userCred.user.sendEmailVerification();
+    msg.textContent = "Verification link sent! Check your email.";
+    msg.classList.remove('text-red-400');
+    msg.classList.add('text-green-400');
+    // Log out until verified
+    await firebase.auth().signOut();
+  } catch (error) {
+    // If account exists, try updating password & show message
+    if (error.code === 'auth/email-already-in-use') {
+      try {
+        // Log in using password
+        await firebase.auth().signInWithEmailAndPassword(email, password);
+        // If successful, you are logged in!
+        msg.textContent = "Logged in to your existing account.";
+        msg.classList.remove('text-red-400');
+        msg.classList.add('text-blue-400');
+      } catch (err2) {
+        // If password wrong, allow to update password
+        if (err2.code === 'auth/wrong-password') {
+          msg.textContent = "Email already in use. Wrong password!";
+          msg.classList.remove('text-green-400', 'text-blue-400');
+          msg.classList.add('text-red-400');
+        } else if (err2.code === 'auth/user-not-found') {
+          msg.textContent = "Email exists via Google sign-in. Set a password by resetting password.";
+          msg.classList.remove('text-green-400', 'text-blue-400');
+          msg.classList.add('text-yellow-400');
+        } else {
+          msg.textContent = err2.message;
+          msg.classList.remove('text-green-400', 'text-blue-400');
+          msg.classList.add('text-red-400');
+        }
+      }
+    } else {
+      msg.textContent = error.message;
+      msg.classList.remove('text-green-400', 'text-blue-400');
+      msg.classList.add('text-red-400');
+    }
+  }
+}
+
+// Log In with Email + Password
+async function loginWithEmail() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value.trim();
+  const msg = document.getElementById('login-message');
+  msg.textContent = "";
+  try {
+    const userCred = await firebase.auth().signInWithEmailAndPassword(email, password);
+    if (!userCred.user.emailVerified) {
+      msg.textContent = "Email not verified yet! Please check your inbox.";
+      msg.classList.remove('text-green-400');
+      msg.classList.add('text-yellow-400');
+      await firebase.auth().signOut();
+    } else {
+      msg.textContent = "Logged in successfully!";
+      msg.classList.remove('text-red-400');
+      msg.classList.add('text-green-400');
+      // তোমার লগিন সফল হলে যা করতে হবে, সেটা এখানে করো
+      // location.reload(); // Example: রিলোড করলে লগিন স্টেট দেখাবে
+    }
+  } catch (error) {
+    msg.textContent = error.message;
+    msg.classList.remove('text-green-400');
+    msg.classList.add('text-red-400');
+  }
+}
+window.signUpWithEmail = signUpWithEmail;
+window.loginWithEmail = loginWithEmail;
+function closeProfileModal() {
+  document.getElementById('profile-modal').classList.add('hidden');
+}
+window.closeProfileModal = closeProfileModal;
+
+async function showProfileModal(uid) {
+  const modal = document.getElementById('profile-modal');
+  modal.classList.remove('hidden');
+  // ডেটা লোড করো
+  const snap = await db.ref('users/' + uid).get();
+  if (!snap.exists()) return;
+  const user = snap.val();
+
+  // Image, name
+  
+  document.getElementById('profile-username').textContent = user.username || '';
     // --- Enhanced Navigation with Match Cleanup ---
     function showScreen(name) {
       for (const key in screens) {
@@ -1237,111 +1341,7 @@ window.addEventListener('DOMContentLoaded', function() {
   }
 });
 // Show/hide forms
-function showLoginForm() {
-  document.getElementById('signup-form').classList.add('hidden');
-  document.getElementById('login-form').classList.remove('hidden');
-}
-function showSignUpForm() {
-  document.getElementById('login-form').classList.add('hidden');
-  document.getElementById('signup-form').classList.remove('hidden');
-}
-window.showLoginForm = showLoginForm;
-window.showSignUpForm = showSignUpForm;
 
-// Sign Up with Email + Password
-async function signUpWithEmail() {
-  const email = document.getElementById('signup-email').value.trim();
-  const password = document.getElementById('signup-password').value.trim();
-  const msg = document.getElementById('signup-message');
-  msg.textContent = "";
-  try {
-    // Try creating account
-    const userCred = await firebase.auth().createUserWithEmailAndPassword(email, password);
-    // Send verification email
-    await userCred.user.sendEmailVerification();
-    msg.textContent = "Verification link sent! Check your email.";
-    msg.classList.remove('text-red-400');
-    msg.classList.add('text-green-400');
-    // Log out until verified
-    await firebase.auth().signOut();
-  } catch (error) {
-    // If account exists, try updating password & show message
-    if (error.code === 'auth/email-already-in-use') {
-      try {
-        // Log in using password
-        await firebase.auth().signInWithEmailAndPassword(email, password);
-        // If successful, you are logged in!
-        msg.textContent = "Logged in to your existing account.";
-        msg.classList.remove('text-red-400');
-        msg.classList.add('text-blue-400');
-      } catch (err2) {
-        // If password wrong, allow to update password
-        if (err2.code === 'auth/wrong-password') {
-          msg.textContent = "Email already in use. Wrong password!";
-          msg.classList.remove('text-green-400', 'text-blue-400');
-          msg.classList.add('text-red-400');
-        } else if (err2.code === 'auth/user-not-found') {
-          msg.textContent = "Email exists via Google sign-in. Set a password by resetting password.";
-          msg.classList.remove('text-green-400', 'text-blue-400');
-          msg.classList.add('text-yellow-400');
-        } else {
-          msg.textContent = err2.message;
-          msg.classList.remove('text-green-400', 'text-blue-400');
-          msg.classList.add('text-red-400');
-        }
-      }
-    } else {
-      msg.textContent = error.message;
-      msg.classList.remove('text-green-400', 'text-blue-400');
-      msg.classList.add('text-red-400');
-    }
-  }
-}
-
-// Log In with Email + Password
-async function loginWithEmail() {
-  const email = document.getElementById('login-email').value.trim();
-  const password = document.getElementById('login-password').value.trim();
-  const msg = document.getElementById('login-message');
-  msg.textContent = "";
-  try {
-    const userCred = await firebase.auth().signInWithEmailAndPassword(email, password);
-    if (!userCred.user.emailVerified) {
-      msg.textContent = "Email not verified yet! Please check your inbox.";
-      msg.classList.remove('text-green-400');
-      msg.classList.add('text-yellow-400');
-      await firebase.auth().signOut();
-    } else {
-      msg.textContent = "Logged in successfully!";
-      msg.classList.remove('text-red-400');
-      msg.classList.add('text-green-400');
-      // তোমার লগিন সফল হলে যা করতে হবে, সেটা এখানে করো
-      // location.reload(); // Example: রিলোড করলে লগিন স্টেট দেখাবে
-    }
-  } catch (error) {
-    msg.textContent = error.message;
-    msg.classList.remove('text-green-400');
-    msg.classList.add('text-red-400');
-  }
-}
-window.signUpWithEmail = signUpWithEmail;
-window.loginWithEmail = loginWithEmail;
-function closeProfileModal() {
-  document.getElementById('profile-modal').classList.add('hidden');
-}
-window.closeProfileModal = closeProfileModal;
-
-async function showProfileModal(uid) {
-  const modal = document.getElementById('profile-modal');
-  modal.classList.remove('hidden');
-  // ডেটা লোড করো
-  const snap = await db.ref('users/' + uid).get();
-  if (!snap.exists()) return;
-  const user = snap.val();
-
-  // Image, name
-  
-  document.getElementById('profile-username').textContent = user.username || '';
 
   // Trophy এবং top image
   // leaderboardData অবশ্যই গ্লোবাল ভ্যারিয়েবল হিসেবে রাখতে হবে
