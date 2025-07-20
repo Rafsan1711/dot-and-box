@@ -1340,7 +1340,7 @@ async function showProfileModal(uid) {
   const user = snap.val();
 
   // Image, name
-  document.getElementById('profile-pic').src = user.photoURL || https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=4a90e2&color=fff&rounded=true&size=128;
+  
   document.getElementById('profile-username').textContent = user.username || '';
 
   // Trophy এবং top image
