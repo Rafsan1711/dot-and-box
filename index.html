@@ -258,6 +258,65 @@ input:not(:checked) + .slider:before {
 
   <div id="auth-screen" class="flex-grow flex flex-col items-center justify-center p-4">
     <h1 class="text-5xl font-extrabold mb-8">Dot and Box Online</h1>
+  <!-- Auth Card -->
+  <div class="w-full max-w-md bg-gray-800 rounded-xl shadow-lg p-6 flex flex-col gap-4">
+    <!-- Auth Tab Buttons -->
+    <div class="flex justify-between mb-2">
+      <button id="show-signup" class="flex-1 py-2 rounded-l-lg bg-gray-700 text-white font-semibold hover:bg-blue-700">Sign Up</button>
+      <button id="show-login" class="flex-1 py-2 rounded-r-lg bg-gray-700 text-white font-semibold hover:bg-green-700">Log In</button>
+    </div>
+    <!-- Sign Up Form -->
+    <form id="signup-form" class="flex flex-col gap-3">
+      <h2 class="text-2xl font-bold text-green-400 text-center mb-1">Sign Up</h2>
+      <input id="signup-email" type="email" placeholder="Email" required class="px-4 py-2 rounded bg-gray-900 border border-gray-600 focus:border-green-400 text-white" autocomplete="email">
+      <input id="signup-password" type="password" placeholder="Password" required class="px-4 py-2 rounded bg-gray-900 border border-gray-600 focus:border-green-400 text-white" autocomplete="new-password">
+      <button type="submit" class="bg-green-500 hover:bg-green-600 font-semibold py-2 rounded text-lg mt-1">Sign Up</button>
+      <div id="signup-error" class="text-red-500 text-sm min-h-[20px]"></div>
+      <div class="text-sm text-gray-400 text-center">
+        Already have an account?
+        <span id="goto-login" class="text-blue-400 hover:underline cursor-pointer">Log In</span>
+      </div>
+    </form>
+    <!-- Log In Form -->
+    <form id="login-form" class="hidden flex flex-col gap-3">
+      <h2 class="text-2xl font-bold text-blue-400 text-center mb-1">Log In</h2>
+      <input id="login-email" type="email" placeholder="Email" required class="px-4 py-2 rounded bg-gray-900 border border-gray-600 focus:border-blue-400 text-white" autocomplete="email">
+      <input id="login-password" type="password" placeholder="Password" required class="px-4 py-2 rounded bg-gray-900 border border-gray-600 focus:border-blue-400 text-white" autocomplete="current-password">
+      <button type="submit" class="bg-blue-500 hover:bg-blue-600 font-semibold py-2 rounded text-lg mt-1">Log In</button>
+      <div id="login-error" class="text-red-500 text-sm min-h-[20px]"></div>
+      <div class="flex items-center justify-between text-sm text-gray-400">
+        <span>
+          Don't have an account?
+          <span id="goto-signup" class="text-green-400 hover:underline cursor-pointer">Sign Up</span>
+        </span>
+        <span>
+          <span id="goto-reset" class="text-yellow-300 hover:underline cursor-pointer">Forgot password?</span>
+        </span>
+      </div>
+    </form>
+    <!-- Password Reset Form -->
+    <form id="reset-form" class="hidden flex flex-col gap-3">
+      <h2 class="text-2xl font-bold text-yellow-300 text-center mb-1">Reset Password</h2>
+      <input id="reset-email" type="email" placeholder="Email" required class="px-4 py-2 rounded bg-gray-900 border border-gray-600 focus:border-yellow-400 text-white" autocomplete="email">
+      <button type="submit" class="bg-yellow-400 hover:bg-yellow-500 font-semibold py-2 rounded text-lg mt-1 text-black">Send Reset Link</button>
+      <div id="reset-error" class="text-red-500 text-sm min-h-[20px]"></div>
+      <div id="reset-success" class="text-green-400 text-sm min-h-[20px]"></div>
+      <div class="text-sm text-gray-400 text-center">
+        <span id="goto-login2" class="text-blue-400 hover:underline cursor-pointer">Back to login</span>
+      </div>
+    </form>
+    <!-- Email Verification Notice -->
+    <div id="verify-email-notice" class="hidden text-center bg-red-900 border border-red-500 text-red-300 p-3 rounded-lg text-sm">
+      Please verify your email address. <br>
+      <button id="resend-verification" class="mt-2 bg-red-600 hover:bg-red-700 px-4 py-1 rounded text-white">Resend Verification Email</button>
+    </div>
+    <!-- Google Sign In Button -->
+    <button id="signin-btn" class="bg-red-500 hover:bg-red-600 px-8 py-3 rounded-lg font-semibold mt-2 flex items-center justify-center gap-2">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/4/4a/Logo_2013_Google.png" class="w-6 h-6" alt="Google"/> Sign in with Google
+    </button>
+  </div>
+</div>
+<!-- ... (আপনার আগের কোড) ... -->
     <button id="signin-btn" class="bg-blue-600 hover:bg-blue-700 px-8 py-3 rounded-lg font-semibold shadow" onclick="signIn()">Sign in with Google</button>
   </div>
 
@@ -396,7 +455,131 @@ input:not(:checked) + .slider:before {
       friends: document.getElementById('nav-friends'),
       settings: document.getElementById('nav-settings'),
     };
+// ==== AUTH FORM UI TOGGLE ====
+const signupForm = document.getElementById('signup-form');
+const loginForm = document.getElementById('login-form');
+const resetForm = document.getElementById('reset-form');
+const showSignupBtn = document.getElementById('show-signup');
+const showLoginBtn = document.getElementById('show-login');
+const gotoLogin = document.getElementById('goto-login');
+const gotoSignup = document.getElementById('goto-signup');
+const gotoReset = document.getElementById('goto-reset');
+const gotoLogin2 = document.getElementById('goto-login2');
+const verifyEmailNotice = document.getElementById('verify-email-notice');
+const resendVerificationBtn = document.getElementById('resend-verification');
 
+// Default: show signup
+function showAuthTab(tab) {
+  signupForm.classList.toggle('hidden', tab !== 'signup');
+  loginForm.classList.toggle('hidden', tab !== 'login');
+  resetForm.classList.toggle('hidden', tab !== 'reset');
+  verifyEmailNotice.classList.add('hidden');
+  // Toggle button highlight
+  if(showSignupBtn && showLoginBtn) {
+    showSignupBtn.classList.toggle('bg-blue-700', tab === 'signup');
+    showLoginBtn.classList.toggle('bg-green-700', tab === 'login');
+  }
+}
+if(showSignupBtn) showSignupBtn.onclick = () => showAuthTab('signup');
+if(showLoginBtn) showLoginBtn.onclick = () => showAuthTab('login');
+if(gotoLogin) gotoLogin.onclick = () => showAuthTab('login');
+if(gotoSignup) gotoSignup.onclick = () => showAuthTab('signup');
+if(gotoReset) gotoReset.onclick = () => showAuthTab('reset');
+if(gotoLogin2) gotoLogin2.onclick = () => showAuthTab('login');
+showAuthTab('signup');
+
+// ==== SIGN UP (Email/Password) ====
+signupForm.addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const email = document.getElementById('signup-email').value.trim();
+  const password = document.getElementById('signup-password').value;
+  const errorDiv = document.getElementById('signup-error');
+  errorDiv.textContent = '';
+  // Simple validation
+  if(!email || !password) {
+    errorDiv.textContent = 'Please enter email & password.';
+    return;
+  }
+  try {
+    const cred = await auth.createUserWithEmailAndPassword(email, password);
+    // Set displayName to Google username if possible, else Anonymous
+    if(cred.user) {
+      // Try to fetch Google profile if exists (advanced: you can skip, else use email as fallback)
+      let username = cred.user.displayName || email.split('@')[0] || 'Anonymous';
+      await cred.user.updateProfile({displayName: username});
+      // Database entry: set username as above
+      await db.ref('users/' + cred.user.uid).set({
+        username: username,
+        rating: 1000,
+        friends: {},
+        friendRequests: {},
+        online: false,
+      });
+      // Send verification email
+      await cred.user.sendEmailVerification();
+      verifyEmailNotice.classList.remove('hidden');
+      signupForm.classList.add('hidden');
+      errorDiv.textContent = '';
+    }
+  } catch(err) {
+    // Show error in red
+    errorDiv.textContent = err.message.replace('Firebase:', '').replace(/\(auth.*\)/, '');
+  }
+});
+    // ==== EMAIL VERIFICATION: Resend Button ====
+if(resendVerificationBtn) {
+  resendVerificationBtn.onclick = async function() {
+    if(auth.currentUser) {
+      try {
+        await auth.currentUser.sendEmailVerification();
+        resendVerificationBtn.textContent = "Sent!";
+        setTimeout(()=>{resendVerificationBtn.textContent = "Resend Verification Email";}, 3000);
+      } catch (err) {
+        resendVerificationBtn.textContent = "Error!";
+      }
+    }
+  };
+    }
+    // ==== LOGIN (Email/Password) ====
+loginForm.addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errorDiv = document.getElementById('login-error');
+  errorDiv.textContent = '';
+  try {
+    const cred = await auth.signInWithEmailAndPassword(email, password);
+    if(cred.user && !cred.user.emailVerified) {
+      errorDiv.textContent = '';
+      loginForm.classList.add('hidden');
+      verifyEmailNotice.classList.remove('hidden');
+      await auth.signOut();
+      return;
+    }
+    // Success: handled by onAuthStateChanged
+  } catch(err) {
+    errorDiv.textContent = err.message.replace('Firebase:', '').replace(/\(auth.*\)/, '');
+  }
+});
+    // ==== PASSWORD RESET ====
+resetForm.addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const email = document.getElementById('reset-email').value.trim();
+  const errorDiv = document.getElementById('reset-error');
+  const successDiv = document.getElementById('reset-success');
+  errorDiv.textContent = '';
+  successDiv.textContent = '';
+  if(!email) {
+    errorDiv.textContent = 'Please enter your email.';
+    return;
+  }
+  try {
+    await auth.sendPasswordResetEmail(email);
+    successDiv.textContent = 'A reset link has been sent to your email.';
+  } catch(err) {
+    errorDiv.textContent = err.message.replace('Firebase:', '').replace(/\(auth.*\)/, '');
+  }
+});
     // GLOBALS
     let currentUser = null;
     let userData = null;
@@ -413,28 +596,43 @@ input:not(:checked) + .slider:before {
     let matchCleanupScheduled = false;
 
     // ==== AUTH & USER ====
-    auth.onAuthStateChanged(async user => {
-      if (user) {
-        currentUser = user;
-        await loadUserData();
-        setOnlineStatus(true);
-        authScreen.style.display = 'none';
-        app.classList.remove('hidden');
-        showScreen('home');
-        setupInitialUI();
-        listenFriendRequests();
-        listenChallenges();
-        listenLeaderboard();
-        listenOnlineUsers();
-        window.addEventListener("beforeunload", ()=>setOnlineStatus(false));
-      } else {
-        setOnlineStatus(false);
-        currentUser = null;
-        userData = null;
-        app.classList.add('hidden');
-        authScreen.style.display = 'flex';
-      }
-    });
+    // ==== AUTH & USER ====
+// এটি পুরোপুরি কপি-পেস্ট করুন, আগের পুরনো onAuthStateChanged অংশ রিমুভ করে
+
+auth.onAuthStateChanged(async user => {
+  if (user) {
+    // Email/password ইউজার হলে email verification চেক করুন
+    if (user.providerData[0].providerId === 'password' && !user.emailVerified) {
+      // ইমেইল ভেরিফাই না করলে লগইন বাতিল
+      await auth.signOut();
+      // ফর্ম ও নোটিস দেখান
+      showAuthTab('login');
+      if (verifyEmailNotice) verifyEmailNotice.classList.remove('hidden');
+      return;
+    }
+    // ইউজার অ্যালাইভ
+    currentUser = user;
+    await loadUserData();
+    setOnlineStatus(true);
+    authScreen.style.display = 'none';
+    app.classList.remove('hidden');
+    showScreen('home');
+    setupInitialUI();
+    listenFriendRequests();
+    listenChallenges();
+    listenLeaderboard();
+    listenOnlineUsers();
+    window.addEventListener("beforeunload", ()=>setOnlineStatus(false));
+  } else {
+    // লগ আউট/নতুন ইউজার
+    setOnlineStatus(false);
+    currentUser = null;
+    userData = null;
+    app.classList.add('hidden');
+    authScreen.style.display = 'flex';
+    showAuthTab('signup');
+  }
+});
 
     async function loadUserData() {
       if (!currentUser) return;
