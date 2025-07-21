@@ -269,6 +269,11 @@ input:not(:checked) + .slider:before {
 .player-red    { background: #e94e77; color: #fff;}
 .player-orange { background: #f5a623; color: #181818;}
 .player-green  { background: #7ed321; color: #181818;}
+    /* Add after .line.horizontal/.line.vertical styles */
+.line.hover-blue    { background: rgba(74,144,226,0.45)!important; box-shadow: 0 0 8px #4a90e2aa; }
+.line.hover-red     { background: rgba(233,78,119,0.45)!important; box-shadow: 0 0 8px #e94e77aa; }
+.line.hover-orange  { background: rgba(245,166,35,0.45)!important; box-shadow: 0 0 8px #f5a623aa; }
+.line.hover-green   { background: rgba(126,211,33,0.45)!important; box-shadow: 0 0 8px #7ed321aa; }
   </style>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
@@ -1064,56 +1069,94 @@ function closeScoreboardModal() {
       });
       scoresEl.innerHTML = html;
     }
+function getPlayerColorClass(idx) {
+  return ['hover-blue','hover-red','hover-orange','hover-green'][idx] || 'hover-blue';
+}
 
-    function renderGameBoard() {
-      if (!gameData) return;
-      const boardSize = gameData.boardSize || getBoardSize(gameData.mode);
-      const lines = gameData.lines || {};
-      const boxes = gameData.boxes || {};
-      let cellPx = 56;
-      if (window.innerWidth < 600) cellPx = Math.max(28, Math.floor(window.innerWidth / (boardSize*2+2)));
-      else if (boardSize >= 6) cellPx = 44;
-      let boardHTML = `<div class="board-grid" style="
-        grid-template-columns: repeat(${boardSize*2+1}, ${cellPx}px);
-        grid-template-rows: repeat(${boardSize*2+1}, ${cellPx}px);
-        width: ${cellPx*(boardSize*2+1)}px;
-        max-width: 98vw;
-      ">`;
-      for(let r=0; r<boardSize*2+1; r++) {
-        for(let c=0; c<boardSize*2+1; c++) {
-          if(r%2===0 && c%2===0) {
-            boardHTML += `<div class="dot"></div>`;
-          }
-          else if(r%2===0 && c%2===1) {
-            const lineKey = `h-${r/2}-${(c-1)/2}`;
-            if(lines[lineKey]) {
-              boardHTML += `<div class="line horizontal active" style="background:${getPlayerColor(lines[lineKey])};width:${cellPx}px;"></div>`;
-            } else {
-              boardHTML += `<div class="line horizontal" onclick="tryDrawLine('${lineKey}')" style="cursor:${isMyTurn?'pointer':'default'};width:${cellPx}px;"></div>`;
-            }
-          }
-          else if(r%2===1 && c%2===0) {
-            const lineKey = `v-${(r-1)/2}-${c/2}`;
-            if(lines[lineKey]) {
-              boardHTML += `<div class="line vertical active" style="background:${getPlayerColor(lines[lineKey])};height:${cellPx}px;"></div>`;
-            } else {
-              boardHTML += `<div class="line vertical" onclick="tryDrawLine('${lineKey}')" style="cursor:${isMyTurn?'pointer':'default'};height:${cellPx}px;"></div>`;
-            }
-          }
-          else if(r%2===1 && c%2===1) {
-            const boxKey = `${(r-1)/2}-${(c-1)/2}`;
-            if(boxes[boxKey]!=null) {
-              const ownerIdx = players.indexOf(boxes[boxKey]);
-              boardHTML += `<div class="box player-${ownerIdx+1}" style="width:${cellPx}px;height:${cellPx}px;">${ownerIdx+1}</div>`;
-            } else {
-              boardHTML += `<div class="box" style="width:${cellPx}px;height:${cellPx}px;"></div>`;
-            }
-          }
+function renderGameBoard() {
+  if (!gameData) return;
+  const boardSize = gameData.boardSize || getBoardSize(gameData.mode);
+  const lines = gameData.lines || {};
+  const boxes = gameData.boxes || {};
+  let cellPx = 56;
+  if (window.innerWidth < 600) cellPx = Math.max(28, Math.floor(window.innerWidth / (boardSize*2+2)));
+  else if (boardSize >= 6) cellPx = 44;
+  let boardHTML = `<div class="board-grid" style="
+    grid-template-columns: repeat(${boardSize*2+1}, ${cellPx}px);
+    grid-template-rows: repeat(${boardSize*2+1}, ${cellPx}px);
+    width: ${cellPx*(boardSize*2+1)}px;
+    max-width: 98vw;
+  ">`;
+
+  // We'll collect line divs to add mouse events later
+  const lineDivs = [];
+
+  for(let r=0; r<boardSize*2+1; r++) {
+    for(let c=0; c<boardSize*2+1; c++) {
+      if(r%2===0 && c%2===0) {
+        boardHTML += `<div class="dot"></div>`;
+      }
+      else if(r%2===0 && c%2===1) {
+        const lineKey = `h-${r/2}-${(c-1)/2}`;
+        const lineId = `line-${lineKey}`;
+        if(lines[lineKey]) {
+          boardHTML += `<div class="line horizontal active" id="${lineId}" style="background:${getPlayerColor(lines[lineKey])};width:${cellPx}px;"></div>`;
+        } else {
+          boardHTML += `<div class="line horizontal" id="${lineId}" data-type="h" data-row="${r/2}" data-col="${(c-1)/2}" style="cursor:${isMyTurn?'pointer':'default'};width:${cellPx}px;"></div>`;
+          lineDivs.push(lineId);
         }
       }
-      boardHTML += '</div>';
-      gameBoard.innerHTML = boardHTML;
+      else if(r%2===1 && c%2===0) {
+        const lineKey = `v-${(r-1)/2}-${c/2}`;
+        const lineId = `line-${lineKey}`;
+        if(lines[lineKey]) {
+          boardHTML += `<div class="line vertical active" id="${lineId}" style="background:${getPlayerColor(lines[lineKey])};height:${cellPx}px;"></div>`;
+        } else {
+          boardHTML += `<div class="line vertical" id="${lineId}" data-type="v" data-row="${(r-1)/2}" data-col="${c/2}" style="cursor:${isMyTurn?'pointer':'default'};height:${cellPx}px;"></div>`;
+          lineDivs.push(lineId);
+        }
+      }
+      else if(r%2===1 && c%2===1) {
+        const boxKey = `${(r-1)/2}-${(c-1)/2}`;
+        if(boxes[boxKey]!=null) {
+          const ownerIdx = players.indexOf(boxes[boxKey]);
+          boardHTML += `<div class="box player-${ownerIdx+1}" style="width:${cellPx}px;height:${cellPx}px;">${ownerIdx+1}</div>`;
+        } else {
+          boardHTML += `<div class="box" style="width:${cellPx}px;height:${cellPx}px;"></div>`;
+        }
+      }
     }
+  }
+  boardHTML += '</div>';
+  gameBoard.innerHTML = boardHTML;
+
+  // ---- Mouse hover/click logic for lines (PC only) ----
+  // After board render, attach JS events to line divs (not .active ones)
+  lineDivs.forEach(lineId => {
+    const line = document.getElementById(lineId);
+    if (!line) return;
+    if (line.classList.contains('active')) return;
+
+    // Mouse hover: show transparent color
+    line.addEventListener('mouseenter', function() {
+      if (!isMyTurn) return;
+      line.classList.add(getPlayerColorClass(playerIndex));
+    });
+    line.addEventListener('mouseleave', function() {
+      line.classList.remove('hover-blue','hover-red','hover-orange','hover-green');
+    });
+
+    // Mouse click: confirm move (only if your turn and not already active)
+    line.addEventListener('click', function(e) {
+      if (!isMyTurn || line.classList.contains('active')) return;
+      line.classList.remove('hover-blue','hover-red','hover-orange','hover-green');
+      // Use your move logic, same as tryDrawLine:
+      tryDrawLine(
+        `${line.dataset.type}-${line.dataset.row}-${line.dataset.col}`
+      );
+    });
+  });
+}
 
     function getPlayerColor(uid) {
       const idx = players.indexOf(uid);
