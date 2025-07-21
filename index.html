@@ -232,6 +232,43 @@ input:not(:checked) + .slider:before {
     .challenge-decline { background: #ef4444; color: #fff;}
     .challenge-accept:hover { background: #16a34a;}
     .challenge-decline:hover { background: #b91c1c;}
+    /* Scoreboard Modal */
+#scoreboard-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.88);
+  z-index: 2000;
+  align-items: center;
+  justify-content: center;
+}
+#scoreboard-modal.active {
+  display: flex;
+}
+#scoreboard-list .rank-box {
+  display: flex; align-items:center; justify-content:space-between;
+  background: #222;
+  border-radius: 10px;
+  padding: 10px 16px;
+  margin-bottom: 10px;
+  font-size: 1.12rem;
+  font-weight: bold;
+}
+.rank-box .player-name {
+  border-radius: 8px;
+  padding: 4px 12px;
+  font-weight: bold;
+  font-size:1.06rem;
+  display:inline-block;
+}
+.rank-1   { color: #fff; }
+.rank-2   { color: #eee; }
+.rank-3   { color: #ddd; }
+.rank-4   { color: #ccc; }
+.player-blue   { background: #4a90e2; color: #fff;}
+.player-red    { background: #e94e77; color: #fff;}
+.player-orange { background: #f5a623; color: #181818;}
+.player-green  { background: #7ed321; color: #181818;}
   </style>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
@@ -411,7 +448,17 @@ input:not(:checked) + .slider:before {
       <div id="modal-leaderboard" class="max-h-48 overflow-y-auto text-left text-sm"></div>
     </div>
   </div>
-
+<!-- Add at the end of body (before </body>) -->
+<div id="scoreboard-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:2000; align-items:center; justify-content:center;">
+  <div style="background:#181818; color:white; border-radius:16px; padding:2rem 2.2rem; max-width:400px; width:90%; text-align:center;">
+    <h2 style="font-size:2rem; font-weight:800; margin-bottom:1.2rem;">Match Result</h2>
+    <div id="scoreboard-list"></div>
+    <button onclick="closeScoreboardModal()" 
+      style="margin-top:1.5rem; padding:10px 32px; font-size:1.1rem; font-weight:700; border:none; border-radius:10px; background:#4ade80; color:#181818; cursor:pointer;">
+      Close
+    </button>
+  </div>
+</div>
   <script>
     // ==== FIREBASE CONFIGURATION ====
     const firebaseConfig = {
@@ -957,29 +1004,43 @@ if (cpForm) {
     }
 
     function showWinner() {
-      let maxScore = -Infinity;
-      players.forEach(uid => {
-        const score = gameData.players[uid].score || 0;
-        if (score > maxScore) maxScore = score;
-      });
-      const winners = players.filter(uid => (gameData.players[uid].score || 0) === maxScore);
-      if (winners.length === 1) {
-        const winnerName = gameData.players[winners[0]].username;
-        if (winners[0] === currentUser.uid) {
-          winnerMessage.textContent = 'You win!';
-        } else {
-          winnerMessage.textContent = winnerName + ' wins!';
-        }
-      } else {
-        const winnerNames = winners.map(uid => gameData.players[uid].username);
-        if (winners.includes(currentUser.uid)) {
-          const otherNames = winnerNames.filter(name => name !== userData.username);
-          winnerMessage.textContent = 'Tie: You, ' + otherNames.join(', ');
-        } else {
-          winnerMessage.textContent = 'Tie: ' + winnerNames.join(', ');
-        }
-      }
-    }
+  // Calculate & sort scores
+  let allScores = players.map(uid => ({
+    uid, 
+    name: gameData.players[uid].username,
+    score: gameData.players[uid].score || 0,
+    color: getPlayerColor(players.indexOf(uid))
+  }));
+  allScores.sort((a, b) => b.score - a.score);
+
+  // Prepare rank names
+  const rankNames = ['1st', '2nd', '3rd', '4th'];
+
+  // Render scoreboard
+  const scoreboardModal = document.getElementById('scoreboard-modal');
+  const scoreboardList = document.getElementById('scoreboard-list');
+  scoreboardList.innerHTML = '';
+  allScores.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = `rank-box rank-${i+1}`;
+    div.innerHTML = `
+      <span style="width:50px">${rankNames[i] || (i+1)+'th'}</span>
+      <span class="player-name player-${p.color}">${p.name}</span>
+      <span style="font-size:1rem;">${p.score}</span>
+    `;
+    scoreboardList.appendChild(div);
+  });
+  scoreboardModal.classList.add('active');
+}
+
+function getPlayerColor(idx) {
+  return ['blue','red','orange','green'][idx] || 'blue';
+}
+
+function closeScoreboardModal() {
+  document.getElementById('scoreboard-modal').classList.remove('active');
+  winnerMessage.textContent = ''; // Clear old winner text
+}
 
     function updateTurnStatus() {
       if (!gameData) return;
