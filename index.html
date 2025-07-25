@@ -551,6 +551,7 @@ input:not(:checked) + .slider:before {
       friends: document.getElementById('screen-friends'),
       settings: document.getElementById('screen-settings'),
     };
+    screens.profile = document.getElementById('screen-profile');
     const navButtons = {
       home: document.getElementById('nav-home'),
       leaderboard: document.getElementById('nav-leaderboard'),
@@ -1560,7 +1561,83 @@ window.addEventListener('DOMContentLoaded', function() {
   }
 });
 
+async function showProfile(uid) {
+  // Hide all screens, including nav
+  Object.values(screens).forEach(s => s.classList.add('hidden'));
+  document.querySelector('.bottom-nav').style.display = 'none';
 
+  screens.profile.classList.remove('hidden');
+  // Load user data
+  const snap = await db.ref('users/' + uid).get();
+  let data = snap.exists() ? snap.val() : null;
+  if (!data) return;
+
+  // Set profile info
+  document.getElementById('profile-username').textContent = data.username || 'Anonymous';
+  document.getElementById('profile-rating').textContent = `Rating: ${data.rating || 0}`;
+  document.getElementById('profile-won').textContent = data.matchesWon || 0;
+  document.getElementById('profile-defeat').textContent = data.matchesDefeat || 0;
+  document.getElementById('profile-picture').src = data.profilePic 
+    ? `images/${data.profilePic}` 
+    : 'images/default.png';
+
+  // Only show "Change Picture" if viewing own profile
+  const changePicBtn = document.getElementById('change-pic-btn');
+  if (uid === currentUser.uid) {
+    changePicBtn.style.display = 'block';
+    changePicBtn.onclick = function() {
+      openPicModal();
+    };
+    document.getElementById('profile-picture').onclick = function() {
+      openPicModal();
+    };
+  } else {
+    changePicBtn.style.display = 'none';
+    document.getElementById('profile-picture').onclick = null;
+  }
+
+  // Close button handler
+  document.getElementById('close-profile-btn').onclick = function() {
+    screens.profile.classList.add('hidden');
+    Object.values(screens).forEach((s, k) => {
+      if (k !== 'profile') s.classList.remove('hidden');
+    });
+    document.querySelector('.bottom-nav').style.display = '';
+    showScreen('home');
+  };
+                               }
+    const picModal = document.getElementById('profile-pic-modal');
+const galleryDiv = document.getElementById('pic-gallery');
+const closePicModalBtn = document.getElementById('close-pic-modal');
+
+// ছবির নামগুলো images/ ফোল্ডারে রাখতে হবে
+const PROFILE_PICS = [
+  "default.png", "boy1.png", "boy2.png", "girl1.png", "girl2.png", "cat.png", "dog.png", "robot.png"
+];
+
+function openPicModal() {
+  picModal.classList.remove('hidden');
+  galleryDiv.innerHTML = '';
+  PROFILE_PICS.forEach(pic => {
+    const img = document.createElement('img');
+    img.src = 'images/' + pic;
+    img.className = 'w-20 h-20 rounded-full border-4 border-gray-600 object-cover cursor-pointer transition hover:scale-110';
+    img.alt = pic;
+    img.onclick = async function() {
+      await db.ref('users/' + currentUser.uid + '/profilePic').set(pic);
+      document.getElementById('profile-picture').src = img.src;
+      picModal.classList.add('hidden');
+    };
+    galleryDiv.appendChild(img);
+  });
+}
+
+closePicModalBtn.onclick = function() {
+  picModal.classList.add('hidden');
+};
+picModal.onclick = function(e) {
+  if (e.target === picModal) picModal.classList.add('hidden');
+};
   </script>
 </body>
             </html>
