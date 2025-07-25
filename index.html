@@ -356,10 +356,7 @@ input:not(:checked) + .slider:before {
 
   <div id="app" class="hidden flex-grow flex flex-col">
     <header class="flex justify-between items-center p-4 border-b border-gray-700 relative">
-      <div>
-  <span id="username" class="font-bold text-xl cursor-pointer hover:underline" title="View Profile"></span>
-  | Rating: <span id="rating" class="font-semibold">0</span>
-      </div>
+      <div><span id="username" class="font-bold text-xl"></span> | Rating: <span id="rating" class="font-semibold">0</span></div>
       
     </header>
     <main class="flex-grow overflow-auto p-4">
@@ -433,47 +430,6 @@ input:not(:checked) + .slider:before {
 </div>     
         <button onclick="signOut()" class="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-semibold">Sign Out</button>
       </section>
-      <!-- Profile Screen -->
-<section id="screen-profile" class="hidden flex flex-col items-center p-6">
-  <div class="max-w-lg w-full bg-gray-800 rounded-2xl shadow-lg p-6 flex flex-col items-center gap-6 relative">
-    <div class="flex items-center w-full gap-5">
-      <img id="profile-picture" src="images/default.png" alt="Profile Picture" class="w-24 h-24 rounded-full border-4 border-green-400 object-cover cursor-pointer transition hover:scale-105" style="background:#222;">
-      <div class="flex flex-col">
-        <span id="profile-username" class="text-2xl font-extrabold text-green-400 mb-1"></span>
-        <span id="profile-rating" class="text-lg font-semibold text-blue-400"></span>
-      </div>
-    </div>
-    <div class="w-full mt-4 flex flex-col gap-4">
-      <div class="bg-gray-900 rounded-xl py-4 px-6 text-center shadow flex flex-col gap-2">
-        <div class="text-base font-bold text-white mb-2">Matches</div>
-        <div class="flex justify-around">
-          <div>
-            <div class="text-xl font-bold text-green-400" id="profile-won">0</div>
-            <div class="text-sm text-gray-400">Won</div>
-          </div>
-          <div>
-            <div class="text-xl font-bold text-red-400" id="profile-defeat">0</div>
-            <div class="text-sm text-gray-400">Defeat</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <button id="close-profile-btn" class="absolute top-4 right-4 bg-red-500 hover:bg-red-600 text-white rounded-full px-4 py-1 font-bold">Close</button>
-    <!-- Profile Pic Change Button: Only shows for self -->
-    <button id="change-pic-btn" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg" style="display:none;">Change Picture</button>
-  </div>
-</section>
-
-<!-- Profile Picture Gallery Modal -->
-<div id="profile-pic-modal" class="fixed inset-0 bg-black bg-opacity-80 hidden justify-center items-center z-50">
-  <div class="bg-gray-900 rounded-2xl p-7 relative flex flex-col items-center" style="min-width:320px;">
-    <button id="close-pic-modal" class="absolute top-3 right-4 text-white text-xl font-bold">✕</button>
-    <h2 class="text-xl font-bold text-green-400 mb-4">Choose Profile Picture</h2>
-    <div id="pic-gallery" class="grid grid-cols-3 gap-5 mb-3">
-      <!-- Images will be loaded here dynamically -->
-    </div>
-  </div>
-</div>
     </main>
     <nav class="bottom-nav">
       <button id="nav-home" onclick="showScreen('home')" class="active">🏠<br><small>Home</small></button>
@@ -551,7 +507,6 @@ input:not(:checked) + .slider:before {
       friends: document.getElementById('screen-friends'),
       settings: document.getElementById('screen-settings'),
     };
-    screens.profile = document.getElementById('screen-profile');
     const navButtons = {
       home: document.getElementById('nav-home'),
       leaderboard: document.getElementById('nav-leaderboard'),
@@ -576,12 +531,7 @@ const cpEmail = document.getElementById('cp-email');
 const cpPassword = document.getElementById('cp-password');
 const cpError = document.getElementById('cp-error');
 const cpSuccess = document.getElementById('cp-success');    
-const usernameEl = document.getElementById('username');
 
-    usernameEl.onclick = function() {
-  if (!currentUser) return;
-  showProfile(currentUser.uid);
-};
 // Default: show signup
 function showAuthTab(tab) {
   signupForm.classList.toggle('hidden', tab !== 'signup');
@@ -1561,83 +1511,7 @@ window.addEventListener('DOMContentLoaded', function() {
   }
 });
 
-async function showProfile(uid) {
-  // Hide all screens, including nav
-  Object.values(screens).forEach(s => s.classList.add('hidden'));
-  document.querySelector('.bottom-nav').style.display = 'none';
 
-  screens.profile.classList.remove('hidden');
-  // Load user data
-  const snap = await db.ref('users/' + uid).get();
-  let data = snap.exists() ? snap.val() : null;
-  if (!data) return;
-
-  // Set profile info
-  document.getElementById('profile-username').textContent = data.username || 'Anonymous';
-  document.getElementById('profile-rating').textContent = `Rating: ${data.rating || 0}`;
-  document.getElementById('profile-won').textContent = data.matchesWon || 0;
-  document.getElementById('profile-defeat').textContent = data.matchesDefeat || 0;
-  document.getElementById('profile-picture').src = data.profilePic 
-    ? `images/${data.profilePic}` 
-    : 'images/default.png';
-
-  // Only show "Change Picture" if viewing own profile
-  const changePicBtn = document.getElementById('change-pic-btn');
-  if (uid === currentUser.uid) {
-    changePicBtn.style.display = 'block';
-    changePicBtn.onclick = function() {
-      openPicModal();
-    };
-    document.getElementById('profile-picture').onclick = function() {
-      openPicModal();
-    };
-  } else {
-    changePicBtn.style.display = 'none';
-    document.getElementById('profile-picture').onclick = null;
-  }
-
-  // Close button handler
-  document.getElementById('close-profile-btn').onclick = function() {
-    screens.profile.classList.add('hidden');
-    Object.values(screens).forEach((s, k) => {
-      if (k !== 'profile') s.classList.remove('hidden');
-    });
-    document.querySelector('.bottom-nav').style.display = '';
-    showScreen('home');
-  };
-                               }
-    const picModal = document.getElementById('profile-pic-modal');
-const galleryDiv = document.getElementById('pic-gallery');
-const closePicModalBtn = document.getElementById('close-pic-modal');
-
-// ছবির নামগুলো images/ ফোল্ডারে রাখতে হবে
-const PROFILE_PICS = [
-  "default.png", "boy1.png", "boy2.png", "girl1.png", "girl2.png", "cat.png", "dog.png", "robot.png"
-];
-
-function openPicModal() {
-  picModal.classList.remove('hidden');
-  galleryDiv.innerHTML = '';
-  PROFILE_PICS.forEach(pic => {
-    const img = document.createElement('img');
-    img.src = 'images/' + pic;
-    img.className = 'w-20 h-20 rounded-full border-4 border-gray-600 object-cover cursor-pointer transition hover:scale-110';
-    img.alt = pic;
-    img.onclick = async function() {
-      await db.ref('users/' + currentUser.uid + '/profilePic').set(pic);
-      document.getElementById('profile-picture').src = img.src;
-      picModal.classList.add('hidden');
-    };
-    galleryDiv.appendChild(img);
-  });
-}
-
-closePicModalBtn.onclick = function() {
-  picModal.classList.add('hidden');
-};
-picModal.onclick = function(e) {
-  if (e.target === picModal) picModal.classList.add('hidden');
-};
   </script>
 </body>
-            </html>
+  </html>
