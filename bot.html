@@ -1,103 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Dot and Box Game (Play vs Bot)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      margin: 0;
-      background-color: #121212;
-      color: #ffffff;
-    }
-    h1 {
-      margin-top: 20px;
-    }
-    #game-board {
-      display: grid;
-      gap: 5px;
-      margin: 20px auto;
-      width: 350px;
-    }
-    .dot {
-      width: 12px;
-      height: 12px;
-      background-color: #ffffff;
-      border-radius: 50%;
-    }
-    .line {
-      background-color: #444;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    }
-    .line.horizontal {
-      height: 6px;
-      width: 60px;
-    }
-    .line.vertical {
-      height: 60px;
-      width: 6px;
-    }
-    .line.active {
-      background-color: #00ff00;
-      cursor: default;
-    }
-    .box {
-      width: 60px;
-      height: 60px;
-      background-color: #2a2a2a;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.2em;
-      font-weight: bold;
-      color: #ffffff;
-      user-select: none;
-    }
-    .player-1 {
-      background-color: #4a90e2; /* Blue */
-    }
-    .player-2 {
-      background-color: #e94e77; /* Red */
-    }
-    #status {
-      margin: 20px 0;
-      font-size: 1.5em;
-      font-weight: bold;
-      display: inline-block;
-      padding: 10px 20px;
-      border-radius: 5px;
-    }
-    .blue-turn {
-      background-color: #4a90e2;
-      color: white;
-    }
-    .red-turn {
-      background-color: #e94e77;
-      color: white;
-    }
-    #winner-message {
-      margin: 20px 0;
-      font-size: 1.5em;
-      font-weight: bold;
-      color: #00ff00;
-    }
-    #restart {
-      margin-top: 20px;
-      padding: 10px 20px;
-      font-size: 16px;
-      background-color: #555;
-      border: none;
-      color: white;
-      cursor: pointer;
-      border-radius: 5px;
-    }
-    #restart:hover {
-      background-color: #777;
-    }
+    /* --- (ওই আগের CSS অপরিবর্তিত) --- */
+    body { font-family: Arial; text-align: center; margin: 0; background: #121212; color: #fff; }
+    h1 { margin-top:20px; }
+    #game-board { display:grid; gap:5px; margin:20px auto; width:350px; }
+    .dot { width:12px; height:12px; background:#fff; border-radius:50%; }
+    .line { background:#444; cursor:pointer; transition:background 0.2s; }
+    .line.horizontal { height:6px; width:60px; }
+    .line.vertical { height:60px; width:6px; }
+    .line.active { background:#00ff00; cursor:default; }
+    .box { width:60px; height:60px; background:#2a2a2a; display:flex; align-items:center; justify-content:center; font-size:1.2em; font-weight:bold; color:#fff; user-select:none; }
+    .player-1 { background:#4a90e2; }
+    .player-2 { background:#e94e77; }
+    #status { margin:20px 0; font-size:1.5em; font-weight:bold; padding:10px 20px; border-radius:5px; display:inline-block; }
+    .blue-turn { background:#4a90e2; color:#fff; }
+    .red-turn { background:#e94e77; color:#fff; }
+    #winner-message { margin:20px 0; font-size:1.5em; font-weight:bold; color:#0f0; }
+    #restart { margin-top:20px; padding:10px 20px; font-size:16px; background:#555; border:none; color:#fff; cursor:pointer; border-radius:5px; }
+    #restart:hover { background:#777; }
   </style>
 </head>
 <body>
@@ -107,7 +33,7 @@
   <div id="game-board"></div>
   <button id="restart">Restart Game</button>
 
-  <!-- Firebase -->
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
   <script>
@@ -125,196 +51,191 @@
   </script>
 
   <script>
-    const boardSize = 5;
-    const gameBoard = document.getElementById("game-board");
-    const status = document.getElementById("status");
-    const winnerMessage = document.getElementById("winner-message");
-    const restartButton = document.getElementById("restart");
-    const victorySound = new Audio("Audio/correct-6033.mp3");
+    // --- Variables & Helpers ---
+    const boardSize=5, gameBoard=document.getElementById("game-board");
+    const status=document.getElementById("status"), winnerMessage=document.getElementById("winner-message");
+    const restartBtn=document.getElementById("restart"), victorySound=new Audio("Audio/correct-6033.mp3");
 
-    let currentPlayer = 1; // 1 = human (blue), 2 = bot (red)
-    let scores = { 1: 0, 2: 0 };
-    let lines = new Set();
-    let gameOver = false;
+    let currentPlayer=1, scores={1:0,2:0}, lines=new Set(), gameOver=false;
 
-    function createBoard() {
-      winnerMessage.textContent = "";
-      gameOver = false;
-      const gridTemplate = [];
-      for (let i = 0; i < boardSize * 2 - 1; i++) gridTemplate.push("auto");
-      gameBoard.style.gridTemplateColumns = gridTemplate.join(" ");
-      gameBoard.innerHTML = "";
-
-      for (let row = 0; row < boardSize * 2 - 1; row++) {
-        for (let col = 0; col < boardSize * 2 - 1; col++) {
-          if (row % 2 === 0 && col % 2 === 0) {
-            const dot = document.createElement("div");
-            dot.className = "dot";
-            gameBoard.appendChild(dot);
-          } else if (row % 2 === 0 || col % 2 === 0) {
-            const line = document.createElement("div");
-            line.className = `line ${row % 2 === 0 ? "horizontal" : "vertical"}`;
-            line.dataset.row = row;
-            line.dataset.col = col;
-            line.addEventListener("click", () => selectLine(row, col));
+    function createBoard(){
+      winnerMessage.textContent=""; gameOver=false; lines.clear();
+      const cols=Array(boardSize*2-1).fill("auto").join(" ");
+      gameBoard.style.gridTemplateColumns=cols; gameBoard.innerHTML="";
+      for(let r=0;r<boardSize*2-1;r++){
+        for(let c=0;c<boardSize*2-1;c++){
+          if(r%2===0&&c%2===0){
+            const dot=document.createElement("div"); dot.className="dot"; gameBoard.appendChild(dot);
+          } else if(r%2===0||c%2===0){
+            const line=document.createElement("div");
+            line.className=`line ${r%2===0?"horizontal":"vertical"}`;
+            line.dataset.row=r; line.dataset.col=c;
+            line.addEventListener("click",()=>selectLine(r,c));
             gameBoard.appendChild(line);
           } else {
-            const box = document.createElement("div");
-            box.className = "box";
-            box.dataset.row = row;
-            box.dataset.col = col;
+            const box=document.createElement("div");
+            box.className="box"; box.dataset.row=r; box.dataset.col=c;
             gameBoard.appendChild(box);
           }
         }
       }
     }
 
-    function selectLine(row, col) {
-      if (gameOver || currentPlayer !== 1) return;
-      const key = `${row}-${col}`;
-      if (lines.has(key)) return;
-
-      lines.add(key);
-      const el = document.querySelector(`.line[data-row="${row}"][data-col="${col}"]`);
-      el.classList.add("active");
-      el.style.backgroundColor = "#4a90e2";
-
-      const gotBox = checkForCompletedBoxes(row, col);
-
-      if (!gotBox) {
-        currentPlayer = 2;
-        updateStatus();
-        setTimeout(makeBotMove, 700);
-      } else {
-        updateStatus();
-      }
-
-      if (isGameOver()) declareWinner();
+    function selectLine(r,c){
+      if(gameOver||currentPlayer!==1) return;
+      const k=`${r}-${c}`; if(lines.has(k)) return;
+      lines.add(k);
+      const el=document.querySelector(`.line[data-row="${r}"][data-col="${c}"]`);
+      el.classList.add("active"); el.style.backgroundColor="#4a90e2";
+      const got=checkForCompletedBoxes(r,c);
+      if(!got){currentPlayer=2;updateStatus();setTimeout(makeBotMove,700);} else updateStatus();
+      if(isGameOver()) declareWinner();
     }
 
-    function checkForCompletedBoxes(row, col) {
-      let completed = false;
-      const tryBox = (r, c) => {
-        const top    = `${r-1}-${c}`, bottom = `${r+1}-${c}`,
-              left   = `${r}-${c-1}`, right  = `${r}-${c+1}`,
-              boxKey = `${r}-${c}`;
-        if ([top, bottom, left, right].every(l => lines.has(l))) {
-          const box = document.querySelector(`.box[data-row="${r}"][data-col="${c}"]`);
-          if (!box.classList.contains("player-1") && !box.classList.contains("player-2")) {
-            box.classList.add(currentPlayer === 1 ? "player-1" : "player-2");
-            box.textContent = currentPlayer;
-            scores[currentPlayer]++;
-            completed = true;
+    function checkForCompletedBoxes(r,c){
+      let comp=false;
+      const ck=(x,y)=>{
+        const t=`${x-1}-${y}`,b=`${x+1}-${y}`,l=`${x}-${y-1}`,ri=`${x}-${y+1}`;
+        if([t,b,l,ri].every(e=>lines.has(e))){
+          const box=document.querySelector(`.box[data-row="${x}"][data-col="${y}"]`);
+          if(!box.classList.contains("player-1")&&!box.classList.contains("player-2")){
+            box.classList.add(currentPlayer===1?"player-1":"player-2");
+            box.textContent=currentPlayer; scores[currentPlayer]++; comp=true;
           }
         }
       };
-      if (row % 2 === 0) {
-        tryBox(row-1, col);
-        tryBox(row+1, col);
-      } else {
-        tryBox(row, col-1);
-        tryBox(row, col+1);
-      }
-      return completed;
+      if(r%2===0){ ck(r-1,c); ck(r+1,c); }
+      else{ ck(r,c-1); ck(r,c+1); }
+      return comp;
     }
 
-    function updateStatus() {
-      if (gameOver) return;
-      status.textContent = `Player ${currentPlayer}'s turn (${currentPlayer===1?"Blue":"Red (Bot)"})`;
+    function updateStatus(){
+      if(gameOver) return;
+      status.textContent=`Player ${currentPlayer}'s turn (${currentPlayer===1?"Blue":"Red (Bot)"})`;
       status.classList.remove("animate__pulse","blue-turn","red-turn");
       void status.offsetWidth;
       status.classList.add("animate__pulse", currentPlayer===1?"blue-turn":"red-turn");
     }
 
-    function isGameOver() {
-      return scores[1] + scores[2] === (boardSize-1)*(boardSize-1);
+    function isGameOver(){
+      return scores[1]+scores[2]===((boardSize-1)*(boardSize-1));
     }
 
-    function declareWinner() {
-      gameOver = true;
-      const winner = scores[1]>scores[2]?"Blue (You)":"Red (Bot)";
-      status.textContent = "";
-      winnerMessage.textContent = `${winner} is the winner!`;
+    function declareWinner(){
+      gameOver=true;
+      const w=scores[1]>scores[2]?"Blue (You)":"Red (Bot)";
+      status.textContent=""; winnerMessage.textContent=`${w} is the winner!`;
       victorySound.play();
     }
 
-    function restartGame() {
-      lines.clear();
-      scores = {1:0,2:0};
-      currentPlayer = 1;
-      gameOver = false;
-      createBoard();
-      updateStatus();
+    restartBtn.addEventListener("click",()=>{
+      createBoard(); scores={1:0,2:0}; currentPlayer=1; updateStatus();
+    });
+
+    createBoard(); updateStatus();
+
+    // --- Minimax Helpers ---
+    function cloneState(){
+      return {
+        lines: new Set([...lines]),
+        scores: {...scores}
+      };
+    }
+    function generateMoves(state){
+      const m=[]; const size=boardSize*2-1;
+      for(let r=0;r<size;r++)for(let c=0;c<size;c++){
+        if((r%2===0||c%2===0)&&!(r%2===0&&c%2===0)){
+          const k=`${r}-${c}`; if(!state.lines.has(k)) m.push({row:r,col:c,key:k});
+        }
+      } return m;
+    }
+    function applyMove(state,move,player){
+      state.lines.add(move.key);
+      // update score if box
+      const got=checkStateBox(state,move.row,move.col,player);
+      if(got) state.scores[player]++;
+      return {state,got};
+    }
+    function checkStateBox(state,r,c,player){
+      let comp=false;
+      const ck=(x,y)=>{
+        const t=`${x-1}-${y}`,b=`${x+1}-${y}`,l=`${x}-${y-1}`,ri=`${x}-${y+1}`;
+        if([t,b,l,ri].every(e=>state.lines.has(e))) comp=true;
+      };
+      if(r%2===0){ ck(r-1,c); ck(r+1,c);} else{ ck(r,c-1); ck(r,c+1);}
+      return comp;
+    }
+    function evaluateState(state){
+      return state.scores[2]-state.scores[1];
+    }
+    function minimax(state,depth,alpha,beta,maximizing){
+      if(depth===0||state.scores[1]+state.scores[2]===((boardSize-1)*(boardSize-1)))
+        return evaluateState(state);
+      const moves=generateMoves(state);
+      if(maximizing){
+        let maxEval=-Infinity;
+        for(const m of moves){
+          const copy={lines:new Set(state.lines),scores:{...state.scores}};
+          const {state:st,got}=applyMove({lines:copy.lines,scores:copy.scores},m,2);
+          const eval=minimax(st,got?depth:depth-1,alpha,beta,false);
+          maxEval=Math.max(maxEval,eval);
+          alpha=Math.max(alpha,eval);
+          if(beta<=alpha) break;
+        }
+        return maxEval;
+      } else {
+        let minEval=Infinity;
+        for(const m of moves){
+          const copy={lines:new Set(state.lines),scores:{...state.scores}};
+          const {state:st,got}=applyMove({lines:copy.lines,scores:copy.scores},m,1);
+          const eval=minimax(st,got?depth:depth-1,alpha,beta,true);
+          minEval=Math.min(minEval,eval);
+          beta=Math.min(beta,eval);
+          if(beta<=alpha) break;
+        }
+        return minEval;
+      }
+    }
+    function findBestMove(){
+      const state={lines:new Set(lines),scores:{...scores}};
+      let best=null, bestVal=-Infinity;
+      const moves=generateMoves(state);
+      for(const m of moves){
+        const copy={lines:new Set(state.lines),scores:{...state.scores}};
+        const {state:st,got}=applyMove({lines:copy.lines,scores:copy.scores},m,2);
+        const val=minimax(st,got?3:2,-Infinity,Infinity,false);
+        if(val>bestVal){ bestVal=val; best=m; }
+      }
+      return best;
     }
 
-    restartButton.addEventListener("click", restartGame);
-
-    createBoard();
-    updateStatus();
-
-    // ===== Bot Logic =====
-    async function makeBotMove() {
-      if (gameOver) return;
-      currentPlayer = 2;
-      updateStatus();
-
-      // gather available lines
-      const all = [];
-      const size = boardSize*2-1;
-      for (let r=0;r<size;r++) for (let c=0;c<size;c++){
-        if ((r%2===0||c%2===0)&&!(r%2===0&&c%2===0)) {
-          const k=`${r}-${c}`;
-          if (!lines.has(k)) all.push({row:r,col:c,key:k});
-        }
-      }
-      if (!all.length) { currentPlayer=1; updateStatus(); return; }
-
-      // fetch stats
-      let stats={};
-      try {
-        const snap = await db.ref('lineStats').once('value');
-        stats = snap.val()||{};
-      } catch(e){ console.error(e); }
-
-      // map scores
-      const scored = all.map(l=>({...l,score:(stats[l.key]?.score)||0}));
-      scored.sort((a,b)=>b.score-a.score);
-
-      // choose
+    // --- Bot Move with DB + Minimax ---
+    async function makeBotMove(){
+      if(gameOver) return;
+      currentPlayer=2; updateStatus();
+      // get moves + stats not needed for minimax
+      // 80% minimax, 20% random
       let choice;
-      if (Math.random()<0.2) {
-        choice = all[Math.floor(Math.random()*all.length)];
+      if(Math.random()<0.2){
+        const all=generateMoves({lines,new Set(),scores});
+        choice=all[Math.floor(Math.random()*all.length)];
       } else {
-        choice = scored[0];
+        choice=findBestMove();
       }
-
-      // apply
+      // apply visually
       lines.add(choice.key);
-      const el2=document.querySelector(`.line[data-row="${choice.row}"][data-col="${choice.col}"]`);
-      if (el2) {
-        el2.classList.add("active");
-        el2.style.backgroundColor="#e94e77";
-      }
+      const el=document.querySelector(`.line[data-row="${choice.row}"][data-col="${choice.col}"]`);
+      el.classList.add("active"); el.style.backgroundColor="#e94e77";
 
-      const got = checkForCompletedBoxes(choice.row, choice.col);
-
-      // update DB
-      try {
-        await db.ref(`lineStats/${choice.key}`).transaction(curr=>{
-          if (curr===null) return {score:got?1:-1};
-          return {score:curr.score + (got?1:-1)};
-        });
-      } catch(e){console.error(e);}
-
-      if (!got) {
-        currentPlayer=1;
-        updateStatus();
-      } else {
-        updateStatus();
-        setTimeout(makeBotMove,700);
-      }
-
-      if (isGameOver()) declareWinner();
+      const got=checkForCompletedBoxes(choice.row,choice.col);
+      // update DB score
+      try{ await db.ref(`lineStats/${choice.key}`).transaction(c=>{
+        if(c===null) return{score:got?1:-1};
+        return{score:c.score+(got?1:-1)};
+      });}catch(e){console.error(e);}
+      if(!got){ currentPlayer=1; updateStatus(); }
+      else{ updateStatus(); setTimeout(makeBotMove,700); }
+      if(isGameOver()) declareWinner();
     }
   </script>
 </body>
