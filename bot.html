@@ -280,84 +280,89 @@
     updateStatus();    
     
     // ===== Bot Logic Placeholder =====    
-    async function makeBotMove() {
-  if (isGameOver()) return;
+   async function makeBotMove() {
+  if (gameOver) return;
 
-  // খালি থাকা সব লাইন সংগ্রহ
+  // Bot টার্ন শুরু হচ্ছে
+  currentPlayer = 2;
+  updateStatus();
+
+  // 1) সব available লাইনগুলো সংগ্রহ
   const allLines = [];
   const size = boardSize * 2 - 1;
   for (let r = 0; r < size; r++) {
     for (let c = 0; c < size; c++) {
       if ((r % 2 === 0 || c % 2 === 0) && !(r % 2 === 0 && c % 2 === 0)) {
         const key = `${r}-${c}`;
-        if (!lines.has(key)) {
-          allLines.push({ row: r, col: c, key });
-        }
+        if (!lines.has(key)) allLines.push({ row: r, col: c, key });
       }
     }
   }
-  if (allLines.length === 0) return; // মুভ শেষ
-
-  // Firebase থেকে লাইন স্কোর ডাটাও নিয়ে আসো
-  const snapshot = await db.ref('lineStats').once('value');
-  const data = snapshot.val() || {};
-
-  // প্রতিটা লাইন এর স্কোর নিয়ে লাইন লিস্ট তৈরি করো
-  let scoredLines = allLines.map(line => {
-    return {
-      ...line,
-      score: data[line.key]?.score ?? 0, // ডাটা না থাকলে 0 স্কোর
-    };
-  });
-
-  // স্কোর অনুসারে লাইন গুলো সাজাও (descending)
-  scoredLines.sort((a, b) => b.score - a.score);
-
-  // এখন বট সর্বোচ্চ স্কোর লাইন বেছে নেবে, তবে মাঝে মাঝে র্যান্ডম হবে (exploration)
-  let move;
-  if (Math.random() < 0.2) {
-    // ২০% সম্ভাবনায় র্যান্ডম লাইন নেবে যাতে নতুন কিছু চেষ্টা করে
-    move = scoredLines[Math.floor(Math.random() * scoredLines.length)];
-  } else {
-    // বাকি ৮০% ক্ষেত্রে সেরা স্কোর লাইনে যাবে
-    move = scoredLines[0];
-  }
-
-  // লাইন মার্ক করো
-  lines.add(move.key);
-  const lineElement = document.querySelector(`.line[data-row="${move.row}"][data-col="${move.col}"]`);
-  if (!lineElement) return; // safety check
-  lineElement.classList.add("active");
-  lineElement.style.backgroundColor = "#e94e77";
-
-  // চেক করো বক্স পূর্ণ হলো কিনা
-  const gotBox = checkForCompletedBoxes(move.row, move.col);
-
-  // Firebase-এ লাইন স্কোর আপডেট করো — বক্স পেলে +১, না পেলে -১
-  const lineRef = db.ref(`lineStats/${move.key}`);
-  await lineRef.transaction(current => {
-    if (current === null) return { score: gotBox ? 1 : -1 };
-    return { score: current.score + (gotBox ? 1 : -1) };
-  });
-
-  if (!gotBox) {
-    currentPlayer = 1; // বক্স না পেলে তোমার টার্ন
-  } else {
-    // বক্স পেলে বটের টার্ন আবারও থাকবে
-  }
-
-  if (isGameOver()) {
-    declareWinner();
+  if (allLines.length === 0) {
+    // আর চাল নেই
+    currentPlayer = 1;
+    updateStatus();
     return;
   }
 
-  updateStatus();
+  // 2) Firebase থেকে আগের স্কোর ভ্যারিয়েবল আনা
+  const snapshot = await db.ref('lineStats').once('value');
+  const stats = snapshot.val() || {};
 
-  // বট যদি আবার টার্ন পায় তাহলে একটু ডিলে দিয়ে আবার মুভ করাও
-  if (gotBox) {
+  // 3) scoredLines তৈরি: প্রতিটি লাইন এর সাথে score
+  const scoredLines = allLines.map(line => ({
+    ...line,
+    score: stats[line.key]?.score ?? 0
+  }));
+
+  // 4) descending স্কোর অনুসারে sort
+  scoredLines.sort((a, b) => b.score - a.score);
+
+  // 5) exploration vs exploitation
+  let choice;
+  if (scoredLines.length === 0) {
+    choice = allLines[Math.floor(Math.random() * allLines.length)];
+  } else if (Math.random() < 0.2) {
+    // ২০% chance random
+    choice = allLines[Math.floor(Math.random() * allLines.length)];
+  } else {
+    // ৮০% chance top scorer
+    choice = scoredLines[0];
+  }
+
+  // 6) লাইন apply করা
+  lines.add(choice.key);
+  const el = document.querySelector(`.line[data-row="${choice.row}"][data-col="${choice.col}"]`);
+  if (el) {
+    el.classList.add("active");
+    el.style.backgroundColor = "#e94e77"; // Bot color
+  }
+
+  // 7) বক্স complete হয়েছে কিনা চেক
+  const gotBox = checkForCompletedBoxes(choice.row, choice.col);
+
+  // 8) Firebase এ স্কোর আপডেট
+  const ref = db.ref(`lineStats/${encodeURIComponent(choice.key)}`);
+  await ref.transaction(curr => {
+    if (curr === null) return { score: gotBox ? 1 : -1 };
+    return { score: curr.score + (gotBox ? 1 : -1) };
+  });
+
+  // 9) টার্ন হ্যান্ডল
+  if (!gotBox) {
+    currentPlayer = 1;      // ফিরতি টার্ন human কে
+    updateStatus();
+  } else {
+    updateStatus();         // Bot আবার খেলার সুযোগ পাবে
     setTimeout(makeBotMove, 700);
   }
+
+  // 10) গেম শেষ হলে ঘোষণা
+  if (isGameOver()) {
+    declareWinner();
+  }
 }
+
   </script>    
 </body>    
 </html>
