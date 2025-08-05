@@ -1,368 +1,321 @@
-<!DOCTYPE html>    
-<html lang="en">    
-<head>    
-  <meta charset="UTF-8" />    
-  <meta name="viewport" content="width=device-width, initial-scale=1" />    
-  <title>Dot and Box Game</title>    
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>    
-  <style>    
-    body {    
-      font-family: Arial, sans-serif;    
-      text-align: center;    
-      margin: 0;    
-      background-color: #121212;    
-      color: #ffffff;    
-    }    
-    h1 {    
-      margin-top: 20px;    
-    }    
-    #game-board {    
-      display: grid;    
-      gap: 5px;    
-      margin: 20px auto;    
-      width: 350px;    
-    }    
-    .dot {    
-      width: 12px;    
-      height: 12px;    
-      background-color: #ffffff;    
-      border-radius: 50%;    
-    }    
-    .line {    
-      background-color: #444;    
-      cursor: pointer;    
-      transition: background-color 0.2s;    
-    }    
-    .line.horizontal {    
-      height: 6px;    
-      width: 60px;    
-    }    
-    .line.vertical {    
-      height: 60px;    
-      width: 6px;    
-    }    
-    .line.active {    
-      background-color: #00ff00;    
-      cursor: default;    
-    }    
-    .box {    
-      width: 60px;    
-      height: 60px;    
-      background-color: #2a2a2a;    
-      display: flex;    
-      align-items: center;    
-      justify-content: center;    
-      font-size: 1.2em;    
-      font-weight: bold;    
-      color: #ffffff;    
-      user-select: none;    
-    }    
-    .player-1 {    
-      background-color: #4a90e2; /* Blue */    
-    }    
-    .player-2 {    
-      background-color: #e94e77; /* Red */    
-    }    
-    #status {    
-      margin: 20px 0;    
-      font-size: 1.5em;    
-      font-weight: bold;    
-      display: inline-block;    
-      padding: 10px 20px;    
-      border-radius: 5px;    
-    }    
-    .blue-turn {    
-      background-color: #4a90e2;    
-      color: white;    
-    }    
-    .red-turn {    
-      background-color: #e94e77;    
-      color: white;    
-    }    
-    #winner-message {    
-      margin: 20px 0;    
-      font-size: 1.5em;    
-      font-weight: bold;    
-      color: #00ff00;    
-    }    
-    #restart {    
-      margin-top: 20px;    
-      padding: 10px 20px;    
-      font-size: 16px;    
-      background-color: #555;    
-      border: none;    
-      color: white;    
-      cursor: pointer;    
-      border-radius: 5px;    
-    }    
-    #restart:hover {    
-      background-color: #777;    
-    }    
-  </style>    
-</head>    
-<body>    
-  <h1>Dot and Box Game (Play vs Bot)</h1>    
-  <div id="status" class="animate__animated animate__pulse blue-turn">Player 1's turn (Blue)</div>    
-  <div id="winner-message"></div>    
-  <div id="game-board"></div>    
-  <button id="restart">Restart Game</button>    
-    
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>    
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>    
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dot and Box Game (Play vs Bot)</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      background-color: #121212;
+      color: #ffffff;
+    }
+    h1 {
+      margin-top: 20px;
+    }
+    #game-board {
+      display: grid;
+      gap: 5px;
+      margin: 20px auto;
+      width: 350px;
+    }
+    .dot {
+      width: 12px;
+      height: 12px;
+      background-color: #ffffff;
+      border-radius: 50%;
+    }
+    .line {
+      background-color: #444;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .line.horizontal {
+      height: 6px;
+      width: 60px;
+    }
+    .line.vertical {
+      height: 60px;
+      width: 6px;
+    }
+    .line.active {
+      background-color: #00ff00;
+      cursor: default;
+    }
+    .box {
+      width: 60px;
+      height: 60px;
+      background-color: #2a2a2a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2em;
+      font-weight: bold;
+      color: #ffffff;
+      user-select: none;
+    }
+    .player-1 {
+      background-color: #4a90e2; /* Blue */
+    }
+    .player-2 {
+      background-color: #e94e77; /* Red */
+    }
+    #status {
+      margin: 20px 0;
+      font-size: 1.5em;
+      font-weight: bold;
+      display: inline-block;
+      padding: 10px 20px;
+      border-radius: 5px;
+    }
+    .blue-turn {
+      background-color: #4a90e2;
+      color: white;
+    }
+    .red-turn {
+      background-color: #e94e77;
+      color: white;
+    }
+    #winner-message {
+      margin: 20px 0;
+      font-size: 1.5em;
+      font-weight: bold;
+      color: #00ff00;
+    }
+    #restart {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #555;
+      border: none;
+      color: white;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    #restart:hover {
+      background-color: #777;
+    }
+  </style>
+</head>
+<body>
+  <h1>Dot and Box Game (Play vs Bot)</h1>
+  <div id="status" class="animate__animated animate__pulse blue-turn">Player 1's turn (Blue)</div>
+  <div id="winner-message"></div>
+  <div id="game-board"></div>
+  <button id="restart">Restart Game</button>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
   <script>
     const firebaseConfig = {
-  apiKey: "AIzaSyCKfr-jvUKonc2TcEDcejk562kOm8LTAa0",
-  authDomain: "dot-and-box-online.firebaseapp.com",
-  databaseURL: "https://dot-and-box-online-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "dot-and-box-online",
-  storageBucket: "dot-and-box-online.firebasestorage.app",
-  messagingSenderId: "334340725862",
-  appId: "1:334340725862:web:356b78d59e76ff6f5861a7"
-};
+      apiKey: "AIzaSyCKfr-jvUKonc2TcEDcejk562kOm8LTAa0",
+      authDomain: "dot-and-box-online.firebaseapp.com",
+      databaseURL: "https://dot-and-box-online-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "dot-and-box-online",
+      storageBucket: "dot-and-box-online.firebasestorage.app",
+      messagingSenderId: "334340725862",
+      appId: "1:334340725862:web:356b78d59e76ff6f5861a7"
+    };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
   </script>
 
-  <script>    
-    const boardSize = 5;    
-    const gameBoard = document.getElementById("game-board");    
-    const status = document.getElementById("status");    
-    const winnerMessage = document.getElementById("winner-message");    
-    const restartButton = document.getElementById("restart");    
-    
-    let currentPlayer = 1; // 1 = human (blue), 2 = bot (red)    
-    let scores = { 1: 0, 2: 0 };    
-    let lines = new Set();    
-    let gameOver = false;    
-    let playingAgainstBot = true;    
-    
-    const victorySound = new Audio("Audio/correct-6033.mp3");    
-    
-    function createBoard() {    
-      winnerMessage.textContent = "";    
-      gameOver = false;    
-      const gridTemplate = [];    
-      for (let i = 0; i < boardSize * 2 - 1; i++) {    
-        gridTemplate.push("auto");    
-      }    
-      gameBoard.style.gridTemplateColumns = gridTemplate.join(" ");    
-      gameBoard.innerHTML = "";    
-    
-      for (let row = 0; row < boardSize * 2 - 1; row++) {    
-        for (let col = 0; col < boardSize * 2 - 1; col++) {    
-          if (row % 2 === 0 && col % 2 === 0) {    
-            const dot = document.createElement("div");    
-            dot.className = "dot";    
-            gameBoard.appendChild(dot);    
-          } else if (row % 2 === 0 || col % 2 === 0) {    
-            const line = document.createElement("div");    
-            line.className = `line ${    
-              row % 2 === 0 ? "horizontal" : "vertical"    
-            }`;    
-            line.dataset.row = row;    
-            line.dataset.col = col;    
-            line.addEventListener("click", () => selectLine(row, col));    
-            gameBoard.appendChild(line);    
-          } else {    
-            const box = document.createElement("div");    
-            box.className = "box";    
-            box.dataset.row = row;    
-            box.dataset.col = col;    
-            gameBoard.appendChild(box);    
-          }    
-        }    
-      }    
-    }    
-    
-    function selectLine(row, col) {    
-      if (gameOver) return;    
-      if (currentPlayer !== 1) return; // human only on their turn    
-      
-      const lineKey = `${row}-${col}`;    
-      if (lines.has(lineKey)) return; // already taken    
-    
-      // Mark the line    
-      lines.add(lineKey);    
-      const lineElement = document.querySelector(`.line[data-row="${row}"][data-col="${col}"]`);    
-      lineElement.classList.add("active");    
-      lineElement.style.backgroundColor = currentPlayer === 1 ? "#4a90e2" : "#e94e77";    
-    
-      const gotBox = checkForCompletedBoxes(row, col);    
-    
-      // Firebase লার্নিং বা স্ট্যাট আপডেট (যদি লাগে) এখানে যোগ করবে পরে    
-    
-      if (!gotBox) {    
-        // No box completed: টার্ন বদলাও    
-        currentPlayer = 2;    
-        updateStatus();    
-        setTimeout(() => {    
-          makeBotMove(); // bot move (function পরের মেসেজে দিবো)    
-        }, 700);    
-      } else {    
-        // Box পেয়েছে, তাই টার্ন ধরে রাখবে    
-        updateStatus();    
-      }    
-    
-      if (isGameOver()) {    
-        declareWinner();    
-      }    
-    }    
-    
-    function checkForCompletedBoxes(row, col) {    
-      let completed = false;    
-    
-      const checkBox = (r, c) => {    
-        if (    
-          r > 0 &&    
-          c > 0 &&    
-          lines.has(`${r - 1}-${c}`) &&    
-          lines.has(`${r + 1}-${c}`) &&    
-          lines.has(`${r}-${c - 1}`) &&    
-          lines.has(`${r}-${c + 1}`)    
-        ) {    
-          const box = document.querySelector(`.box[data-row="${r}"][data-col="${c}"]`);    
-          if (!box.classList.contains("player-1") && !box.classList.contains("player-2")) {    
-            box.classList.add(currentPlayer === 1 ? "player-1" : "player-2");    
-            box.textContent = currentPlayer;    
-            scores[currentPlayer]++;    
-            completed = true;    
-          }    
-        }    
-      };    
-    
-      if (row % 2 === 0) {    
-        checkBox(row - 1, col);    
-        checkBox(row + 1, col);    
-      } else {    
-        checkBox(row, col - 1);    
-        checkBox(row, col + 1);    
-      }    
-    
-      return completed;    
-    }    
-    
-    function updateStatus() {    
-      if (gameOver) return;    
-    
-      status.textContent = `Player ${currentPlayer}'s turn (${currentPlayer === 1 ? "Blue" : "Red (Bot)"})`;    
-    
-      status.classList.remove("animate__pulse", "blue-turn", "red-turn");    
-      void status.offsetWidth;    
-      status.classList.add("animate__pulse", currentPlayer === 1 ? "blue-turn" : "red-turn");    
-    }    
-    
-    function isGameOver() {    
-      return scores[1] + scores[2] === (boardSize - 1) * (boardSize - 1);    
-    }    
-    
-    function declareWinner() {    
-      gameOver = true;    
-      const winner = scores[1] > scores[2] ? "Blue (You)" : "Red (Bot)";    
-      status.textContent = "";    
-      winnerMessage.textContent = `${winner} is the winner!`;    
-      victorySound.play();    
-    }    
-    
-    function restartGame() {    
-      gameBoard.innerHTML = "";    
-      currentPlayer = 1;    
-      scores = { 1: 0, 2: 0 };    
-      lines.clear();    
-      winnerMessage.textContent = "";    
-      gameOver = false;    
-      createBoard();    
-      updateStatus();    
-    }    
-    
-    restartButton.addEventListener("click", restartGame);    
-    
-    createBoard();    
-    updateStatus();    
-    
-    // ===== Bot Logic Placeholder =====    
-   async function makeBotMove() {
-  if (gameOver) return;
+  <script>
+    const boardSize = 5;
+    const gameBoard = document.getElementById("game-board");
+    const status = document.getElementById("status");
+    const winnerMessage = document.getElementById("winner-message");
+    const restartButton = document.getElementById("restart");
+    const victorySound = new Audio("Audio/correct-6033.mp3");
 
-  // Bot টার্ন শুরু হচ্ছে
-  currentPlayer = 2;
-  updateStatus();
+    let currentPlayer = 1; // 1 = human (blue), 2 = bot (red)
+    let scores = { 1: 0, 2: 0 };
+    let lines = new Set();
+    let gameOver = false;
 
-  // 1) সব available লাইনগুলো সংগ্রহ
-  const allLines = [];
-  const size = boardSize * 2 - 1;
-  for (let r = 0; r < size; r++) {
-    for (let c = 0; c < size; c++) {
-      if ((r % 2 === 0 || c % 2 === 0) && !(r % 2 === 0 && c % 2 === 0)) {
-        const key = `${r}-${c}`;
-        if (!lines.has(key)) allLines.push({ row: r, col: c, key });
+    function createBoard() {
+      winnerMessage.textContent = "";
+      gameOver = false;
+      const gridTemplate = [];
+      for (let i = 0; i < boardSize * 2 - 1; i++) gridTemplate.push("auto");
+      gameBoard.style.gridTemplateColumns = gridTemplate.join(" ");
+      gameBoard.innerHTML = "";
+
+      for (let row = 0; row < boardSize * 2 - 1; row++) {
+        for (let col = 0; col < boardSize * 2 - 1; col++) {
+          if (row % 2 === 0 && col % 2 === 0) {
+            const dot = document.createElement("div");
+            dot.className = "dot";
+            gameBoard.appendChild(dot);
+          } else if (row % 2 === 0 || col % 2 === 0) {
+            const line = document.createElement("div");
+            line.className = `line ${row % 2 === 0 ? "horizontal" : "vertical"}`;
+            line.dataset.row = row;
+            line.dataset.col = col;
+            line.addEventListener("click", () => selectLine(row, col));
+            gameBoard.appendChild(line);
+          } else {
+            const box = document.createElement("div");
+            box.className = "box";
+            box.dataset.row = row;
+            box.dataset.col = col;
+            gameBoard.appendChild(box);
+          }
+        }
       }
     }
-  }
-  if (allLines.length === 0) {
-    // আর চাল নেই
-    currentPlayer = 1;
+
+    function selectLine(row, col) {
+      if (gameOver || currentPlayer !== 1) return;
+      const key = `${row}-${col}`;
+      if (lines.has(key)) return;
+
+      lines.add(key);
+      const el = document.querySelector(`.line[data-row="${row}"][data-col="${col}"]`);
+      el.classList.add("active");
+      el.style.backgroundColor = "#4a90e2";
+
+      const gotBox = checkForCompletedBoxes(row, col);
+
+      if (!gotBox) {
+        currentPlayer = 2;
+        updateStatus();
+        setTimeout(makeBotMove, 700);
+      } else {
+        updateStatus();
+      }
+
+      if (isGameOver()) declareWinner();
+    }
+
+    function checkForCompletedBoxes(row, col) {
+      let completed = false;
+      const tryBox = (r, c) => {
+        const top    = `${r-1}-${c}`, bottom = `${r+1}-${c}`,
+              left   = `${r}-${c-1}`, right  = `${r}-${c+1}`,
+              boxKey = `${r}-${c}`;
+        if ([top, bottom, left, right].every(l => lines.has(l))) {
+          const box = document.querySelector(`.box[data-row="${r}"][data-col="${c}"]`);
+          if (!box.classList.contains("player-1") && !box.classList.contains("player-2")) {
+            box.classList.add(currentPlayer === 1 ? "player-1" : "player-2");
+            box.textContent = currentPlayer;
+            scores[currentPlayer]++;
+            completed = true;
+          }
+        }
+      };
+      if (row % 2 === 0) {
+        tryBox(row-1, col);
+        tryBox(row+1, col);
+      } else {
+        tryBox(row, col-1);
+        tryBox(row, col+1);
+      }
+      return completed;
+    }
+
+    function updateStatus() {
+      if (gameOver) return;
+      status.textContent = `Player ${currentPlayer}'s turn (${currentPlayer===1?"Blue":"Red (Bot)"})`;
+      status.classList.remove("animate__pulse","blue-turn","red-turn");
+      void status.offsetWidth;
+      status.classList.add("animate__pulse", currentPlayer===1?"blue-turn":"red-turn");
+    }
+
+    function isGameOver() {
+      return scores[1] + scores[2] === (boardSize-1)*(boardSize-1);
+    }
+
+    function declareWinner() {
+      gameOver = true;
+      const winner = scores[1]>scores[2]?"Blue (You)":"Red (Bot)";
+      status.textContent = "";
+      winnerMessage.textContent = `${winner} is the winner!`;
+      victorySound.play();
+    }
+
+    function restartGame() {
+      lines.clear();
+      scores = {1:0,2:0};
+      currentPlayer = 1;
+      gameOver = false;
+      createBoard();
+      updateStatus();
+    }
+
+    restartButton.addEventListener("click", restartGame);
+
+    createBoard();
     updateStatus();
-    return;
-  }
 
-  // 2) Firebase থেকে আগের স্কোর ভ্যারিয়েবল আনা
-  const snapshot = await db.ref('lineStats').once('value');
-  const stats = snapshot.val() || {};
+    // ===== Bot Logic =====
+    async function makeBotMove() {
+      if (gameOver) return;
+      currentPlayer = 2;
+      updateStatus();
 
-  // 3) scoredLines তৈরি: প্রতিটি লাইন এর সাথে score
-  const scoredLines = allLines.map(line => ({
-    ...line,
-    score: stats[line.key]?.score ?? 0
-  }));
+      // gather available lines
+      const all = [];
+      const size = boardSize*2-1;
+      for (let r=0;r<size;r++) for (let c=0;c<size;c++){
+        if ((r%2===0||c%2===0)&&!(r%2===0&&c%2===0)) {
+          const k=`${r}-${c}`;
+          if (!lines.has(k)) all.push({row:r,col:c,key:k});
+        }
+      }
+      if (!all.length) { currentPlayer=1; updateStatus(); return; }
 
-  // 4) descending স্কোর অনুসারে sort
-  scoredLines.sort((a, b) => b.score - a.score);
+      // fetch stats
+      let stats={};
+      try {
+        const snap = await db.ref('lineStats').once('value');
+        stats = snap.val()||{};
+      } catch(e){ console.error(e); }
 
-  // 5) exploration vs exploitation
-  let choice;
-  if (scoredLines.length === 0) {
-    choice = allLines[Math.floor(Math.random() * allLines.length)];
-  } else if (Math.random() < 0.2) {
-    // ২০% chance random
-    choice = allLines[Math.floor(Math.random() * allLines.length)];
-  } else {
-    // ৮০% chance top scorer
-    choice = scoredLines[0];
-  }
+      // map scores
+      const scored = all.map(l=>({...l,score:(stats[l.key]?.score)||0}));
+      scored.sort((a,b)=>b.score-a.score);
 
-  // 6) লাইন apply করা
-  lines.add(choice.key);
-  const el = document.querySelector(`.line[data-row="${choice.row}"][data-col="${choice.col}"]`);
-  if (el) {
-    el.classList.add("active");
-    el.style.backgroundColor = "#e94e77"; // Bot color
-  }
+      // choose
+      let choice;
+      if (Math.random()<0.2) {
+        choice = all[Math.floor(Math.random()*all.length)];
+      } else {
+        choice = scored[0];
+      }
 
-  // 7) বক্স complete হয়েছে কিনা চেক
-  const gotBox = checkForCompletedBoxes(choice.row, choice.col);
+      // apply
+      lines.add(choice.key);
+      const el2=document.querySelector(`.line[data-row="${choice.row}"][data-col="${choice.col}"]`);
+      if (el2) {
+        el2.classList.add("active");
+        el2.style.backgroundColor="#e94e77";
+      }
 
-  // 8) Firebase এ স্কোর আপডেট
-  const ref = db.ref(`lineStats/${encodeURIComponent(choice.key)}`);
-  await ref.transaction(curr => {
-    if (curr === null) return { score: gotBox ? 1 : -1 };
-    return { score: curr.score + (gotBox ? 1 : -1) };
-  });
+      const got = checkForCompletedBoxes(choice.row, choice.col);
 
-  // 9) টার্ন হ্যান্ডল
-  if (!gotBox) {
-    currentPlayer = 1;      // ফিরতি টার্ন human কে
-    updateStatus();
-  } else {
-    updateStatus();         // Bot আবার খেলার সুযোগ পাবে
-    setTimeout(makeBotMove, 700);
-  }
+      // update DB
+      try {
+        await db.ref(`lineStats/${choice.key}`).transaction(curr=>{
+          if (curr===null) return {score:got?1:-1};
+          return {score:curr.score + (got?1:-1)};
+        });
+      } catch(e){console.error(e);}
 
-  // 10) গেম শেষ হলে ঘোষণা
-  if (isGameOver()) {
-    declareWinner();
-  }
-}
+      if (!got) {
+        currentPlayer=1;
+        updateStatus();
+      } else {
+        updateStatus();
+        setTimeout(makeBotMove,700);
+      }
 
-  </script>    
-</body>    
+      if (isGameOver()) declareWinner();
+    }
+  </script>
+</body>
 </html>
