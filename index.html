@@ -269,6 +269,26 @@ input:not(:checked) + .slider:before {
 .player-red    { background: #e94e77; color: #fff;}
 .player-orange { background: #f5a623; color: #181818;}
 .player-green  { background: #7ed321; color: #181818;}
+
+    
+  .bot-play-button {
+    display: inline-block;
+    padding: 12px 28px;
+    font-size: 1.05rem;
+    font-weight: bold;
+    color: white;
+    background: #3b82f6; /* vibrant blue */
+    border: none;
+    border-radius: 10px;
+    text-decoration: none;
+    transition: background 0.25s ease;
+    margin-top: 20px;
+  }
+
+  .bot-play-button:hover {
+    background: #2563eb; /* darker blue on hover */
+  }
+
   </style>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
@@ -369,6 +389,10 @@ input:not(:checked) + .slider:before {
         <div class="flex justify-center mb-6">
           <button id="start-btn" class="bg-green-600 hover:bg-green-700 px-8 py-3 rounded-lg font-semibold" onclick="startMatch()">Start Online Game</button>
         </div>
+        <!-- Bot Challenge Button -->
+<a href="bot.html" class="bot-play-button">Play vs Bot</a>
+
+
         <div id="match-link" class="text-center mb-6 text-sm text-blue-400 break-all"></div>
         <div id="status" class="blue-turn text-white"></div>
         <div id="scores" class="text-center mb-4"></div>
