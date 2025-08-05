@@ -6,6 +6,7 @@
   <title>Dot and Box Game (Bot vs Bot Self-Play)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
   <style>
+    /* তোমার আগের CSS */
     body {
       font-family: Arial, sans-serif;
       text-align: center;
@@ -96,9 +97,10 @@
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
   <script>
-    const firebaseConfig = {
+    // === ১ম বটের Firebase Config ===
+    const firebaseConfig1 = {
       apiKey: "AIzaSyCKfr-jvUKonc2TcEDcejk562kOm8LTAa0",
       authDomain: "dot-and-box-online.firebaseapp.com",
       databaseURL: "https://dot-and-box-online-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -107,14 +109,26 @@
       messagingSenderId: "334340725862",
       appId: "1:334340725862:web:356b78d59e76ff6f5861a7"
     };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-  
-});
-    
-  </script>
+    // === ২য় বটের Firebase Config (তুমি পরে সেট করবে) ===
+    const firebaseConfig2 = {
+      apiKey: "AIzaSyD8z3e5j9y48wJkyU89F7M19cDfxQ4P8uo",
+  authDomain: "chess-online-ebc1f.firebaseapp.com",
+  databaseURL: "https://chess-online-ebc1f-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "chess-online-ebc1f",
+  storageBucket: "chess-online-ebc1f.firebasestorage.app",
+  messagingSenderId: "825068912703",
+  appId: "1:825068912703:web:48330509c612b8b4cdf88a"
+};
 
-  <script>
+    // ২টি আলাদা firebase app ইনিশিয়ালাইজ
+    const mainApp = firebase.initializeApp(firebaseConfig1, "MainBotApp");
+    const mainDb = mainApp.database();
+
+    const oppApp = firebase.initializeApp(firebaseConfig2, "OpponentBotApp");
+    const oppDb = oppApp.database();
+
+    // === বাকী কোড ===
+
     const boardSize = 5;
     const gameBoard = document.getElementById("game-board");
     const status = document.getElementById("status");
@@ -125,7 +139,7 @@
     let scores = {1: 0, 2: 0};
     let lines = new Set();
     let gameOver = false;
-    let thinkingDelay = 600; // ms delay between bot moves for smoothness
+    let thinkingDelay = 600;
 
     function createBoard() {
       winnerMessage.textContent = "";
@@ -205,7 +219,6 @@
       status.textContent = "";
       winnerMessage.textContent = `${winner} wins! Starting new match shortly...`;
       victorySound.play();
-      // স্বয়ং rematch ২ সেকেন্ড পরে শুরু হবে
       setTimeout(() => {
         restartGame();
         setTimeout(makeBotMove, thinkingDelay);
@@ -225,9 +238,10 @@
 
       const gotBox = checkForCompletedBoxes(row, col);
 
-      // Update Firebase score for the line (optional reinforcement learning store)
+      // Firebase update আলাদা আলাদা ডাটাবেজে করব, কার মুভ সে অনুযায়ী
       try {
-        await db.ref(`lineStats/${key}`).transaction(curr => {
+        const targetDb = currentPlayer === 1 ? mainDb : oppDb;
+        await targetDb.ref(`lineStats/${key}`).transaction(curr => {
           if (curr === null) return {score: gotBox ? 1 : -1};
           return {score: curr.score + (gotBox ? 1 : -1)};
         });
@@ -246,7 +260,7 @@
       return true;
     }
 
-    // Utility functions for bot logic
+    // বট লজিক (একই লজিক দুই বটের জন্য আলাদা করে কল হবে)
 
     function countBoxLines(r, c) {
       const top    = `${r-1}-${c}`, bottom = `${r+1}-${c}`,
@@ -282,8 +296,8 @@
       return count;
     }
 
-    async function makeBotMove() {
-      if (gameOver) return;
+    async function makeBot1Move() {
+      if (gameOver || currentPlayer !== 1) return;
       updateStatus();
 
       const size = boardSize*2 - 1;
@@ -299,32 +313,71 @@
         }
       }
 
-      if (availableLines.length === 0) return; // no moves left
+      if (availableLines.length === 0) return;
 
-      // Step 1: Try any winning move (completes a box)
+      // Try winning move
       for (const line of availableLines) {
         if (wouldCompleteBox(line.row, line.col)) {
           await applyMove(line.row, line.col);
-          // If scored, bot moves again after delay
-          setTimeout(makeBotMove, thinkingDelay);
+          setTimeout(makeBot1Move, thinkingDelay);
           return;
         }
       }
 
-      // Step 2: Find safe moves (those that don't create 3-sided boxes for opponent)
+      // Safe moves
       const safeMoves = availableLines.filter(l => moveCreatesThirdSide(l.row, l.col) === 0);
-
-      // Step 3: If no safe moves, pick moves with minimal risk
       let candidateMoves = safeMoves.length > 0 ? safeMoves : availableLines;
-      candidateMoves.sort((a, b) => moveCreatesThirdSide(a.row, a.col) - moveCreatesThirdSide(b.row, b.col));
+      candidateMoves.sort((a,b) => moveCreatesThirdSide(a.row, a.col) - moveCreatesThirdSide(b.row, b.col));
 
-      // Pick best candidate
-      const choice = candidateMoves[0];
-      await applyMove(choice.row, choice.col);
+      await applyMove(candidateMoves[0].row, candidateMoves[0].col);
 
-      // If didn't score, switch turn and next bot move after delay
-      if (!gameOver) {
-        setTimeout(makeBotMove, thinkingDelay);
+      if (!gameOver) setTimeout(makeBotMove, thinkingDelay);
+    }
+
+    async function makeBot2Move() {
+      if (gameOver || currentPlayer !== 2) return;
+      updateStatus();
+
+      const size = boardSize*2 - 1;
+      const availableLines = [];
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          if ((r % 2 === 0 || c % 2 === 0) && !(r % 2 === 0 && c % 2 === 0)) {
+            const key = `${r}-${c}`;
+            if (!lines.has(key)) {
+              availableLines.push({row: r, col: c, key});
+            }
+          }
+        }
+      }
+
+      if (availableLines.length === 0) return;
+
+      // Try winning move
+      for (const line of availableLines) {
+        if (wouldCompleteBox(line.row, line.col)) {
+          await applyMove(line.row, line.col);
+          setTimeout(makeBot2Move, thinkingDelay);
+          return;
+        }
+      }
+
+      // Safe moves
+      const safeMoves = availableLines.filter(l => moveCreatesThirdSide(l.row, l.col) === 0);
+      let candidateMoves = safeMoves.length > 0 ? safeMoves : availableLines;
+      candidateMoves.sort((a,b) => moveCreatesThirdSide(a.row, a.col) - moveCreatesThirdSide(b.row, b.col));
+
+      await applyMove(candidateMoves[0].row, candidateMoves[0].col);
+
+      if (!gameOver) setTimeout(makeBotMove, thinkingDelay);
+    }
+
+    async function makeBotMove() {
+      if (gameOver) return;
+      if (currentPlayer === 1) {
+        await makeBot1Move();
+      } else {
+        await makeBot2Move();
       }
     }
 
@@ -332,19 +385,18 @@
       createBoard();
     }
 
-    // Start game with board created and first bot move triggered after a short delay
     createBoard();
     setTimeout(makeBotMove, thinkingDelay);
 
-    // Disable right click and keys to prevent cheating/debugging (optional)
+    // Optional: block right-click and devtools keys
     document.addEventListener('contextmenu', e => e.preventDefault());
     document.onkeydown = function(e) {
-      if(e.key === "F12" ||   
-         (e.ctrlKey && e.shiftKey && ['I','J','C'].includes(e.key.toUpperCase())) ||   
+      if(e.key === "F12" || 
+         (e.ctrlKey && e.shiftKey && ['I','J','C'].includes(e.key.toUpperCase())) || 
          (e.ctrlKey && e.key.toUpperCase() === 'U')) {
         return false;
       }
     };
   </script>
 </body>
-    </html>
+  </html>
