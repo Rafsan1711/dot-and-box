@@ -169,6 +169,24 @@
       }
     }
 
+    // Encode current board state as a string for Firebase keys
+    function encodeBoardState() {
+      const size = boardSize * 2 - 1;
+      // We'll encode the board lines as a string of 0/1 for each possible line, in fixed order
+      // Order: rows first from top to bottom, cols left to right
+      let stateArr = [];
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          // Only lines (horizontal or vertical, no dots, no boxes)
+          if ((r % 2 === 0 || c % 2 === 0) && !(r % 2 === 0 && c % 2 === 0)) {
+            const key = `${r}-${c}`;
+            stateArr.push(lines.has(key) ? '1' : '0');
+          }
+        }
+      }
+      return stateArr.join('');
+    }
+
     function selectLine(row, col) {
       if (gameOver || currentPlayer !== 1) return;
       const key = `${row}-${col}`;
@@ -196,8 +214,7 @@
       let completed = false;
       const tryBox = (r, c) => {
         const top    = `${r-1}-${c}`, bottom = `${r+1}-${c}`,
-              left   = `${r}-${c-1}`, right  = `${r}-${c+1}`,
-              boxKey = `${r}-${c}`;
+              left   = `${r}-${c-1}`, right  = `${r}-${c+1}`;
         if ([top, bottom, left, right].every(l => lines.has(l))) {
           const box = document.querySelector(`.box[data-row="${r}"][data-col="${c}"]`);
           if (!box.classList.contains("player-1") && !box.classList.contains("player-2")) {
@@ -252,66 +269,86 @@
     createBoard();
     updateStatus();
 
-    // ===== Bot Logic =====
+    // ===== Bot Logic with simple reinforcement learning on state-action pairs =====
     async function makeBotMove() {
       if (gameOver) return;
       currentPlayer = 2;
       updateStatus();
 
-      // gather available lines
-      const all = [];
+      const allMoves = [];
       const size = boardSize*2-1;
-      for (let r=0;r<size;r++) for (let c=0;c<size;c++){
-        if ((r%2===0||c%2===0)&&!(r%2===0&&c%2===0)) {
-          const k=`${r}-${c}`;
-          if (!lines.has(k)) all.push({row:r,col:c,key:k});
+      for (let r=0; r<size; r++) {
+        for (let c=0; c<size; c++) {
+          if ((r%2===0 || c%2===0) && !(r%2===0 && c%2===0)) {
+            const key = `${r}-${c}`;
+            if (!lines.has(key)) allMoves.push({row:r, col:c, key});
+          }
         }
       }
-      if (!all.length) { currentPlayer=1; updateStatus(); return; }
 
-      // fetch stats
-      let stats={};
-      try {
-        const snap = await db.ref('lineStats').once('value');
-        stats = snap.val()||{};
-      } catch(e){ console.error(e); }
-
-      // map scores
-      const scored = all.map(l=>({...l,score:(stats[l.key]?.score)||0}));
-      scored.sort((a,b)=>b.score-a.score);
-
-      // choose
-      let choice;
-      if (Math.random()<0.2) {
-        choice = all[Math.floor(Math.random()*all.length)];
-      } else {
-        choice = scored[0];
+      if (!allMoves.length) {
+        currentPlayer = 1;
+        updateStatus();
+        return;
       }
 
-      // apply
+      // Encode current board state before move
+      const state = encodeBoardState();
+
+      // Fetch scores for this state from Firebase
+      let stats = {};
+      try {
+        const snap = await db.ref(`stateStats/${state}`).once('value');
+        stats = snap.val() || {};
+      } catch(e) {
+        console.error(e);
+      }
+
+      // Map moves with scores (default 0)
+      const scoredMoves = allMoves.map(move => ({
+        ...move,
+        score: stats[move.key]?.score || 0
+      }));
+
+      // Sort descending by score
+      scoredMoves.sort((a,b) => b.score - a.score);
+
+      // Choose move: 20% random, else best score
+      let choice;
+      if (Math.random() < 0.2) {
+        choice = allMoves[Math.floor(Math.random()*allMoves.length)];
+      } else {
+        choice = scoredMoves[0];
+      }
+
+      // Apply move
       lines.add(choice.key);
-      const el2=document.querySelector(`.line[data-row="${choice.row}"][data-col="${choice.col}"]`);
+      const el2 = document.querySelector(`.line[data-row="${choice.row}"][data-col="${choice.col}"]`);
       if (el2) {
         el2.classList.add("active");
-        el2.style.backgroundColor="#e94e77";
+        el2.style.backgroundColor = "#e94e77";
       }
 
-      const got = checkForCompletedBoxes(choice.row, choice.col);
+      // Check if box completed
+      const gotBox = checkForCompletedBoxes(choice.row, choice.col);
 
-      // update DB
+      // Update Firebase with reward: +1 if box completed else -1
       try {
-        await db.ref(`lineStats/${choice.key}`).transaction(curr=>{
-          if (curr===null) return {score:got?1:-1};
-          return {score:curr.score + (got?1:-1)};
+        await db.ref(`stateStats/${state}/${choice.key}`).transaction(curr => {
+          if (curr === null) return {score: gotBox ? 1 : -1};
+          return {score: curr.score + (gotBox ? 1 : -1)};
         });
-      } catch(e){console.error(e);}
+      } catch(e) {
+        console.error(e);
+      }
 
-      if (!got) {
-        currentPlayer=1;
+      // Turn handling
+      if (!gotBox) {
+        currentPlayer = 1;
         updateStatus();
       } else {
         updateStatus();
-        setTimeout(makeBotMove,700);
+        setTimeout(makeBotMove, 700);
       }
 
       if (isGameOver()) declareWinner();
