@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Dot and Box Game (Play vs Bot)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
   <style>
@@ -13,7 +13,9 @@
       background-color: #121212;
       color: #ffffff;
     }
-    h1 { margin-top: 20px; }
+    h1 {
+      margin-top: 20px;
+    }
     #game-board {
       display: grid;
       gap: 5px;
@@ -21,7 +23,8 @@
       width: 350px;
     }
     .dot {
-      width: 12px; height: 12px;
+      width: 12px;
+      height: 12px;
       background-color: #ffffff;
       border-radius: 50%;
     }
@@ -30,47 +33,76 @@
       cursor: pointer;
       transition: background-color 0.2s;
     }
-    .line.horizontal { height: 6px; width: 60px; }
-    .line.vertical   { height: 60px; width: 6px; }
+    .line.horizontal {
+      height: 6px;
+      width: 60px;
+    }
+    .line.vertical {
+      height: 60px;
+      width: 6px;
+    }
     .line.active {
       background-color: #00ff00;
       cursor: default;
     }
     .box {
-      width: 60px; height: 60px;
+      width: 60px;
+      height: 60px;
       background-color: #2a2a2a;
-      display: flex; align-items: center;
+      display: flex;
+      align-items: center;
       justify-content: center;
-      font-size: 1.2em; font-weight: bold;
-      color: #ffffff; user-select: none;
+      font-size: 1.2em;
+      font-weight: bold;
+      color: #ffffff;
+      user-select: none;
     }
-    .player-1 { background-color: #4a90e2; }
-    .player-2 { background-color: #e94e77; }
+    .player-1 {
+      background-color: #4a90e2; /* Blue */
+    }
+    .player-2 {
+      background-color: #e94e77; /* Red */
+    }
     #status {
-      margin: 20px 0; font-size: 1.5em;
-      font-weight: bold; display: inline-block;
-      padding: 10px 20px; border-radius: 5px;
-    }
-    .blue-turn { background-color: #4a90e2; color: white; }
-    .red-turn  { background-color: #e94e77; color: white; }
-    #winner-message {
-      margin: 20px 0; font-size: 1.5em;
-      font-weight: bold; color: #00ff00;
-    }
-    #restart {
-      margin-top: 20px; padding: 10px 20px;
-      font-size: 16px; background-color: #555;
-      border: none; color: white; cursor: pointer;
+      margin: 20px 0;
+      font-size: 1.5em;
+      font-weight: bold;
+      display: inline-block;
+      padding: 10px 20px;
       border-radius: 5px;
     }
-    #restart:hover { background-color: #777; }
+    .blue-turn {
+      background-color: #4a90e2;
+      color: white;
+    }
+    .red-turn {
+      background-color: #e94e77;
+      color: white;
+    }
+    #winner-message {
+      margin: 20px 0;
+      font-size: 1.5em;
+      font-weight: bold;
+      color: #00ff00;
+    }
+    #restart {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #555;
+      border: none;
+      color: white;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    #restart:hover {
+      background-color: #777;
+    }
   </style>
 </head>
 <body>
   <h1>Dot and Box Game (Play vs Bot)</h1>
-  <div id="status" class="animate__animated animate__pulse blue-turn">
-    Player 1's turn (Blue)
-  </div>
+  <div id="status" class="animate__animated animate__pulse blue-turn">Player 1's turn (Blue)</div>
   <div id="winner-message"></div>
   <div id="game-board"></div>
   <button id="restart">Restart Game</button>
@@ -100,198 +132,190 @@
     const restartButton = document.getElementById("restart");
     const victorySound = new Audio("Audio/correct-6033.mp3");
 
-    let currentPlayer = 1;           // 1 = human, 2 = bot
-    let scores = {1:0, 2:0};
+    let currentPlayer = 1; // 1 = human (blue), 2 = bot (red)
+    let scores = { 1: 0, 2: 0 };
     let lines = new Set();
     let gameOver = false;
-    let trajectory = [];             // record of {state,action,player}
-
-    // hash the current state of lines
-    function getStateHash() {
-      return Array.from(lines).sort().join(",");
-    }
 
     function createBoard() {
       winnerMessage.textContent = "";
       gameOver = false;
-      lines.clear();
-      scores = {1:0,2:0};
-      trajectory = [];
-      const cols = Array(boardSize*2-1).fill("auto").join(" ");
-      gameBoard.style.gridTemplateColumns = cols;
+      const gridTemplate = [];
+      for (let i = 0; i < boardSize * 2 - 1; i++) gridTemplate.push("auto");
+      gameBoard.style.gridTemplateColumns = gridTemplate.join(" ");
       gameBoard.innerHTML = "";
-      for(let r=0; r<boardSize*2-1; r++){
-        for(let c=0; c<boardSize*2-1; c++){
-          if(r%2===0 && c%2===0){
+
+      for (let row = 0; row < boardSize * 2 - 1; row++) {
+        for (let col = 0; col < boardSize * 2 - 1; col++) {
+          if (row % 2 === 0 && col % 2 === 0) {
             const dot = document.createElement("div");
-            dot.className="dot"; gameBoard.append(dot);
-          } else if(r%2===0||c%2===0){
-            const ln=document.createElement("div");
-            ln.className="line "+(r%2===0?"horizontal":"vertical");
-            ln.dataset.row=r; ln.dataset.col=c;
-            ln.addEventListener("click",()=>selectLine(r,c));
-            gameBoard.append(ln);
+            dot.className = "dot";
+            gameBoard.appendChild(dot);
+          } else if (row % 2 === 0 || col % 2 === 0) {
+            const line = document.createElement("div");
+            line.className = `line ${row % 2 === 0 ? "horizontal" : "vertical"}`;
+            line.dataset.row = row;
+            line.dataset.col = col;
+            line.addEventListener("click", () => selectLine(row, col));
+            gameBoard.appendChild(line);
           } else {
-            const box=document.createElement("div");
-            box.className="box"; box.dataset.row=r;
-            box.dataset.col=c; gameBoard.append(box);
+            const box = document.createElement("div");
+            box.className = "box";
+            box.dataset.row = row;
+            box.dataset.col = col;
+            gameBoard.appendChild(box);
           }
         }
       }
-      updateStatus();
     }
 
-    function selectLine(row,col){
-      if(gameOver||currentPlayer!==1) return;
-      const key=`${row}-${col}`;
-      if(lines.has(key)) return;
-      recordStep(key,1);
-      applyMove(key,row,col,"#4a90e2");
-      const got=checkForCompletedBoxes(row,col);
-      if(!got){
-        currentPlayer=2; updateStatus();
-        setTimeout(makeBotMove,700);
-      } else updateStatus();
-      if(isGameOver()) endGame();
-    }
+    function selectLine(row, col) {
+      if (gameOver || currentPlayer !== 1) return;
+      const key = `${row}-${col}`;
+      if (lines.has(key)) return;
 
-    function applyMove(key,row,col,color){
       lines.add(key);
-      const el=document.querySelector(`.line[data-row="${row}"][data-col="${col}"]`);
-      el.classList.add("active"); el.style.backgroundColor=color;
+      const el = document.querySelector(`.line[data-row="${row}"][data-col="${col}"]`);
+      el.classList.add("active");
+      el.style.backgroundColor = "#4a90e2";
+
+      const gotBox = checkForCompletedBoxes(row, col);
+
+      if (!gotBox) {
+        currentPlayer = 2;
+        updateStatus();
+        setTimeout(makeBotMove, 700);
+      } else {
+        updateStatus();
+      }
+
+      if (isGameOver()) declareWinner();
     }
 
-    function checkForCompletedBoxes(r,c){
-      let done=false;
-      const tryBox=(rr,cc)=>{
-        const t=`${rr-1}-${cc}`, b=`${rr+1}-${cc}`,
-              l=`${rr}-${cc-1}`, rt=`${rr}-${cc+1}`;
-        if([t,b,l,rt].every(x=>lines.has(x))){
-          const box=document.querySelector(`.box[data-row="${rr}"][data-col="${cc}"]`);
-          if(!box.classList.contains("player-1")&&!box.classList.contains("player-2")){
-            box.classList.add(currentPlayer===1?"player-1":"player-2");
-            box.textContent=currentPlayer;
-            scores[currentPlayer]++; done=true;
+    function checkForCompletedBoxes(row, col) {
+      let completed = false;
+      const tryBox = (r, c) => {
+        const top    = `${r-1}-${c}`, bottom = `${r+1}-${c}`,
+              left   = `${r}-${c-1}`, right  = `${r}-${c+1}`,
+              boxKey = `${r}-${c}`;
+        if ([top, bottom, left, right].every(l => lines.has(l))) {
+          const box = document.querySelector(`.box[data-row="${r}"][data-col="${c}"]`);
+          if (!box.classList.contains("player-1") && !box.classList.contains("player-2")) {
+            box.classList.add(currentPlayer === 1 ? "player-1" : "player-2");
+            box.textContent = currentPlayer;
+            scores[currentPlayer]++;
+            completed = true;
           }
         }
       };
-      if(c%2===1&&r%2===1) return false;
-      if(r%2===0){ tryBox(r-1,c); tryBox(r+1,c); }
-      else      { tryBox(r,c-1); tryBox(r,c+1); }
-      return done;
+      if (row % 2 === 0) {
+        tryBox(row-1, col);
+        tryBox(row+1, col);
+      } else {
+        tryBox(row, col-1);
+        tryBox(row, col+1);
+      }
+      return completed;
     }
 
-    function updateStatus(){
-      status.textContent = gameOver
-        ? ""
-        : `Player ${currentPlayer}'s turn (${currentPlayer===1?"Blue":"Red (Bot)"})`;
+    function updateStatus() {
+      if (gameOver) return;
+      status.textContent = `Player ${currentPlayer}'s turn (${currentPlayer===1?"Blue":"Red (Bot)"})`;
       status.classList.remove("animate__pulse","blue-turn","red-turn");
       void status.offsetWidth;
-      status.classList.add("animate__pulse",
-        currentPlayer===1?"blue-turn":"red-turn");
+      status.classList.add("animate__pulse", currentPlayer===1?"blue-turn":"red-turn");
     }
 
-    function isGameOver(){
-      return scores[1]+scores[2] === (boardSize-1)*(boardSize-1);
+    function isGameOver() {
+      return scores[1] + scores[2] === (boardSize-1)*(boardSize-1);
     }
 
-    function endGame(){
-      gameOver=true;
-      const winner = scores[1]>scores[2] ? "Blue (You)" : "Red (Bot)";
+    function declareWinner() {
+      gameOver = true;
+      const winner = scores[1]>scores[2]?"Blue (You)":"Red (Bot)";
+      status.textContent = "";
       winnerMessage.textContent = `${winner} is the winner!`;
       victorySound.play();
-      updateStatus();
-      // learn from this game
-      learnFromGame();
     }
 
-    function restartGame(){
+    function restartGame() {
+      lines.clear();
+      scores = {1:0,2:0};
+      currentPlayer = 1;
+      gameOver = false;
       createBoard();
-      document.querySelectorAll(".box").forEach(b=>b.textContent="");
+      updateStatus();
     }
 
-    restartButton.addEventListener("click",restartGame);
+    restartButton.addEventListener("click", restartGame);
 
-    // record each move
-    function recordStep(action,player){
-      const state = getStateHash();
-      trajectory.push({state,action,player});
-    }
+    createBoard();
+    updateStatus();
 
-    // Q-learning parameters
-    const alpha = 0.5;
-    const gamma = 0.9;
-    const epsilon = 0.1;
+    // ===== Bot Logic =====
+    async function makeBotMove() {
+      if (gameOver) return;
+      currentPlayer = 2;
+      updateStatus();
 
-    async function makeBotMove(){
-      if(gameOver) return;
-      currentPlayer=2; updateStatus();
-      // gather moves
-      const all=[];
-      const s = boardSize*2-1;
-      for(let r=0;r<s;r++)for(let c=0;c<s;c++){
-        if((r%2===0||c%2===0)&&!(r%2===0&&c%2===0)){
-          const key=`${r}-${c}`;
-          if(!lines.has(key)) all.push({row:r,col:c,key});
+      // gather available lines
+      const all = [];
+      const size = boardSize*2-1;
+      for (let r=0;r<size;r++) for (let c=0;c<size;c++){
+        if ((r%2===0||c%2===0)&&!(r%2===0&&c%2===0)) {
+          const k=`${r}-${c}`;
+          if (!lines.has(k)) all.push({row:r,col:c,key:k});
         }
       }
-      if(all.length===0){ currentPlayer=1; updateStatus(); return; }
+      if (!all.length) { currentPlayer=1; updateStatus(); return; }
 
-      const state = getStateHash();
-      // load Q-values
-      const snap = await db.ref(`qTable/${encodeURIComponent(state)}`).once('value');
-      const qRow = snap.val()||{};
-      // ensure entries
-      all.forEach(m=>{ if(!(m.key in qRow)) qRow[m.key]=0; });
-      // choose via ε-greedy
+      // fetch stats
+      let stats={};
+      try {
+        const snap = await db.ref('lineStats').once('value');
+        stats = snap.val()||{};
+      } catch(e){ console.error(e); }
+
+      // map scores
+      const scored = all.map(l=>({...l,score:(stats[l.key]?.score)||0}));
+      scored.sort((a,b)=>b.score-a.score);
+
+      // choose
       let choice;
-      if(Math.random()<epsilon){
+      if (Math.random()<0.2) {
         choice = all[Math.floor(Math.random()*all.length)];
       } else {
-        choice = all.reduce((a,b)=> qRow[a.key]>qRow[b.key]?a:b );
+        choice = scored[0];
       }
-      recordStep(choice.key,2);
-      applyMove(choice.key,choice.row,choice.col,"#e94e77");
-      const got = checkForCompletedBoxes(choice.row,choice.col);
 
-      // update immediate Q
-      const ref = db.ref(
-        `qTable/${encodeURIComponent(state)}/${choice.key}`
-      );
-      await ref.transaction(curr=>{
-        const oldQ = curr||0;
-        const reward = got?1:0;
-        return oldQ + alpha*(reward - oldQ);
-      });
+      // apply
+      lines.add(choice.key);
+      const el2=document.querySelector(`.line[data-row="${choice.row}"][data-col="${choice.col}"]`);
+      if (el2) {
+        el2.classList.add("active");
+        el2.style.backgroundColor="#e94e77";
+      }
 
-      if(!got){
-        currentPlayer=1; updateStatus();
+      const got = checkForCompletedBoxes(choice.row, choice.col);
+
+      // update DB
+      try {
+        await db.ref(`lineStats/${choice.key}`).transaction(curr=>{
+          if (curr===null) return {score:got?1:-1};
+          return {score:curr.score + (got?1:-1)};
+        });
+      } catch(e){console.error(e);}
+
+      if (!got) {
+        currentPlayer=1;
+        updateStatus();
       } else {
         updateStatus();
         setTimeout(makeBotMove,700);
       }
-      if(isGameOver()) endGame();
-    }
 
-    async function learnFromGame(){
-      // end-of-game reward: +1 win, -1 loss
-      const finalReward = scores[2]>scores[1]?1:-1;
-      // update each step
-      for(let i=0;i<trajectory.length;i++){
-        const {state,action,player} = trajectory[i];
-        if(player!==2) continue; // only bot actions
-        const ref = db.ref(
-          `qTable/${encodeURIComponent(state)}/${action}`
-        );
-        await ref.transaction(curr=>{
-          const oldQ = curr||0;
-          return oldQ + alpha*(finalReward - oldQ);
-        });
-      }
+      if (isGameOver()) declareWinner();
     }
-
-    // init
-    createBoard();
   </script>
 </body>
 </html>
