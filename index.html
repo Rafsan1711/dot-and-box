@@ -391,6 +391,20 @@ input:not(:checked) + .slider:before {
         </div>
         <!-- Bot Challenge Button -->
 <a href="bot.html" class="bot-play-button">Play vs Bot</a>
+        <div id="train-btn-container" style="margin-top: 20px; display: none;">
+  <a href="train.html">
+    <button style="
+      padding: 12px 25px;
+      font-size: 16px;
+      font-weight: bold;
+      background-color: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    ">Train Bot Model</button>
+  </a>
+        </div>
 
 
         <div id="match-link" class="text-center mb-6 text-sm text-blue-400 break-all"></div>
@@ -497,6 +511,11 @@ input:not(:checked) + .slider:before {
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.database();
+    firebase.auth().onAuthStateChanged(user => {
+  if (user && user.email === "1234@gmail.com") {
+    document.getElementById("train-btn-container").style.display = "block";
+  }
+});
 
     // UI Elements
     const authScreen = document.getElementById('auth-screen');
